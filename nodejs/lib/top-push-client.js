@@ -16,10 +16,7 @@ var	EventEmitter = require('events').EventEmitter,
 	PROTOCOL = 'mqtt',
 
 module.export.backend = function(origin, uris) {
-	var e = { emiter: new EventEmitter() };
-	e.emit = function(event, argument) { this.emiter.emit(event, argument); };
-	e.on = function(event, callback) { this.emiter.on(event, callback); };
-	e.once = function(event, callback) { this.emiter.once(event, callback); };
+	var e = endpoint();
 	e.getTarget = function(target, onFind) {
 		getTargetOnWhichServer(target, function(connection) {
 			onFind({
@@ -73,28 +70,43 @@ module.export.backend = function(origin, uris) {
 }
 
 module.export.frontend = function(origin, uri) {
+	var e = endpoint();
+	var conn;
 	var context = {};
-	context.confirm = function(message) {};
-	var e = {
-		
+	context.confirm = function(message) {
+		//TODO:add batch-confirm
+		//TODO:parse message from buffer
+		//conn.sendBytes();
 	};
-	//e.onMessage = function(message, context) {}
-	//e.onError = function(error){}
 
 	ws(
 		function(connection) {
-			connections[j] = connection;
+			conn = connection;
 		},
 		function(message) {
 			if(message.type == 'binary') {
 				var buffer = message.binaryData;
 				//TODO:parse message from buffer
-				var confirm = {};
-				this.emit('confirm', confirm);
+				var publish = {};
+				e.emit('message', { context:context, message: publish });
 			}
 		}
-	).connect(uris[i], PROTOCOL, origin);
+	).connect(uri, PROTOCOL, origin);
 
+	//TODO:do reconnect in timer loop
+	var timer;
+	function doConfirm() {
+
+	}
+
+	return e;
+}
+
+function endpoint() {
+	var e = { emiter: new EventEmitter() };
+	e.emit = function(event, argument) { this.emiter.emit(event, argument); };
+	e.on = function(event, callback) { this.emiter.on(event, callback); };
+	e.once = function(event, callback) { this.emiter.once(event, callback); };
 	return e;
 }
 
