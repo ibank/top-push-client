@@ -16,8 +16,10 @@ var	EventEmitter = require('events').EventEmitter,
 	PROTOCOL = 'mqtt',
 
 module.export.backend = function(origin, uris) {
-	var e = {};
-
+	var e = { emiter: new EventEmitter() };
+	e.emit = function(event, argument) { this.emiter.emit(event, argument); };
+	e.on = function(event, callback) { this.emiter.on(event, callback); };
+	e.once = function(event, callback) { this.emiter.once(event, callback); };
 	e.getTarget = function(target, onFind) {
 		getTargetOnWhichServer(target, function(connection) {
 			onFind({
@@ -35,7 +37,7 @@ module.export.backend = function(origin, uris) {
 	function getTargetOnWhichServer(target, onGetServer) {
 		for(var i = 0; i< connections.length; i++) {
 			var conn = connections[i];
-			conn.once('response', function(response) {
+			e.once('response', function(response) {
 				if(response.result == 'true') {
 					onGetServer(conn);
 				}
@@ -56,12 +58,12 @@ module.export.backend = function(origin, uris) {
 				function(message) {
 					if(message.type == 'utf8') {
 						//easy rpc
-						this.emit('response', JSON.parse(message.utf8Data));
+						e.emit('response', JSON.parse(message.utf8Data));
 					} else if(message.type == 'binary') {
 						var buffer = message.binaryData;
 						//TODO:parse message from buffer
 						var confirm = {};
-						this.emit('confirm', confirm);
+						e.emit('confirm', confirm);
 					}
 				}
 			).connect(uris[i], PROTOCOL, origin);
@@ -70,12 +72,29 @@ module.export.backend = function(origin, uris) {
 	return e;
 }
 
-module.export.frontend = function() {
+module.export.frontend = function(origin, uri) {
 	var context = {};
 	context.confirm = function(message) {};
-	var e = {};
+	var e = {
+		
+	};
 	//e.onMessage = function(message, context) {}
 	//e.onError = function(error){}
+
+	ws(
+		function(connection) {
+			connections[j] = connection;
+		},
+		function(message) {
+			if(message.type == 'binary') {
+				var buffer = message.binaryData;
+				//TODO:parse message from buffer
+				var confirm = {};
+				this.emit('confirm', confirm);
+			}
+		}
+	).connect(uris[i], PROTOCOL, origin);
+
 	return e;
 }
 
