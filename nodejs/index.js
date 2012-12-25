@@ -10,10 +10,33 @@
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-var top 				= require('./lib/top-push-client'),
-	client 				= new require('net').Socket(),
+var top 		= require('./lib/top-push-client'),
+	backend 	= top.backend,
+	frontend 	= top.frontend
+	FRONT 		= 'js-front';
 
-	HOST 				= 'localhost',
-	PORT 				= 8080,
-	URI 				= 'tcp://localhost:8080/back',
-	ENCODING 			= 'ascii';
+frontend(
+	FRONT, 
+	'ws://localhost:8080/frontend')
+	.on('message', function(context) {
+		console.log('---- frontend receive message ----');
+		console.log(context.message);
+		context.confirm();
+	});
+
+backend('-js-back', ['ws://localhost:8080/backend']).getTarget(
+	FRONT, 
+	function(target) {
+		for(var i = 0; i < 10; i++) {
+			target.sendMessage({
+				MessageId: "20121221" + i,
+				Content: "hello world! " + i
+			});
+		}
+		console.log('send 10 messages');
+	}
+).on('confirm', function(confirm) {
+	console.log('---- backend receive confirm ----');
+	console.log(confirm);
+	setTimeout(function() { process.exit(); }, 2000);
+});

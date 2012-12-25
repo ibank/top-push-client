@@ -13,7 +13,7 @@ top push client, can pub/confirm via [top-push](https://github.com/wsky/top-push
 - javascript(nodejs)
 
 ```js
-backend('yourId', 'ws://localhost/backend').getTarget(
+backend('yourId', ['ws://localhost/backend']).getTarget(
 	'targetId', 
 	function(target) {
 		target.sendMessage({
