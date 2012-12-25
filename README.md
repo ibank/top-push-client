@@ -1,22 +1,46 @@
-top-push-client
+# top-push-client
+
 ===============
 
 top push client, can pub/confirm via [top-push](https://github.com/wsky/top-push)
 
-support:
+## Support
+
 - java
+
 - c#
-- javascript
 
+- javascript(nodejs)
 
-# License
+```js
+backend('yourId', 'ws://localhost/backend').getTarget(
+	'targetId', 
+	function(target) {
+		target.sendMessage({
+			MessageId: "20121221000000001",
+			Content: "hello world!"
+		});
+	}
+).on('confirm', function(confirm) {
+	//do something
+});
 
-(The MIT License)
+var e = frontend('yourId', 'ws://localhost/frontend');
+e.on('message', function(context) {
+	var msg = context.message;
+	//...
+	context.confirm();
+});
+```
 
-Copyright (C) 2012 wsky (wskyhx at gmail.com) and other contributors
+## License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+	(The MIT License)
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+	Copyright (C) 2012 wsky (wskyhx at gmail.com) and other contributors
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+	Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
