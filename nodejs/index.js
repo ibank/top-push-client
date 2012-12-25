@@ -24,7 +24,7 @@ frontend(
 		context.confirm();
 	});
 
-backend('-js-back', ['ws://localhost:8080/backend']).getTarget(
+backend('js-back', ['ws://localhost:8080/backend']).getTarget(
 	FRONT, 
 	function(target) {
 		for(var i = 0; i < 10; i++) {
