@@ -44,3 +44,18 @@ e.on('message', function(context) {
 	The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+- WebSocket-Node Apache License Version 2.0
+
+	https://github.com/Worlize/WebSocket-Node
+	https://github.com/Worlize/WebSocket-Node/blob/master/LICENSE
+
+- fastjson Java JSON-processor Apache License Version 2.0
+	http://code.alibabatech.com/wiki/display/FastJSON/Home
+
+- jp.a840.websocket.websocket-client MIT License
+	https://github.com/hashio/websocket-client
+	https://github.com/hashio/websocket-client/blob/master/LICENSE
+
+
