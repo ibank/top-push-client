@@ -52,7 +52,7 @@ var	EventEmitter 	= require('events').EventEmitter,
 	websocket 		= require('websocket').client,
 	PING_INTERVAL 	= 60000,
 	SIZE_MSG 		= 1024,
-	PROTOCOL 		= 'mqtt',
+	PROTOCOL 		= 'default', //nodejs version do not impl other protocol
 	ENCODING 		= 'utf-8',
 	MessageType 	= { PUBLISH: 1, PUBCONFIRM: 2 };
 

@@ -22,6 +22,8 @@ public class WebSocketClientTest {
 						try {
 							FrameRfc6455 frame = (FrameRfc6455) socket
 									.createFrame("{\"Command\":\"isOnline\", \"Arguments\":{\"id\":\"test\"}}");
+							// client to server always mask
+							// https://github.com/wsky/top-push-client/issues/3
 							frame.mask();
 							socket.send(frame);
 						} catch (WebSocketException e) {
@@ -30,7 +32,7 @@ public class WebSocketClientTest {
 					}
 
 					public void onMessage(WebSocket socket, Frame frame) {
-						System.out.println(frame);
+						System.out.println("onMessage: "+frame);
 					}
 
 					public void onError(WebSocket socket, WebSocketException e) {
@@ -40,7 +42,7 @@ public class WebSocketClientTest {
 					public void onClose(WebSocket socket) {
 						System.err.println("Closed");
 					}
-				}, "mqtt");
+				});
 		((WebSocketImpl) socket).setOrigin("java");
 		socket.setBlockingMode(false);
 		socket.connect();
