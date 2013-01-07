@@ -8,7 +8,40 @@ top push client, can pub/confirm via [top-push](https://github.com/wsky/top-push
 
 - java
 
-- c#
+```java
+Client client = new Client(flag);
+client.connect("ws://localhost:8080/server", protocol);
+client.setMessageHandler(new MessageHandler() {
+	@Override
+	public void onMessage(int messageType, 
+		int bodyFormat, 
+		byte[] messageBody, 
+		int offset, 
+		int length, 
+		MessageContext context) {
+		if (messageType == MessageType.PUBLISH) {
+			// get publish message
+			String json = new String(messageBody, offset, length, Charset.forName("UTF-8"));
+			PublishMessage pub = JSON.parseObject(json, PublishMessage.class);
+
+			System.out.println(String.format("get publish message: %s | %s", json, pub));
+			
+			// reply confirm message
+			ConfirmMessage confirm = new ConfirmMessage();
+			confirm.MessageId = pub.MessageId;
+			byte[] body = JSON.toJSONString(confirm).getBytes(Charset.forName("UTF-8"));
+
+			context.reply(MessageType.PUBCONFIRM, MessageBodyFormat.JSON, body, 0, body.length);
+
+		} else if (messageType == MessageType.PUBCONFIRM) {
+			// get confirm message
+			String json = new String(messageBody, offset, length, Charset.forName("UTF-8"));
+			ConfirmMessage confirm = JSON.parseObject(json, ConfirmMessage.class);
+	}
+});
+```
+
+- c#(coming soon)
 
 - javascript(nodejs)
 
@@ -47,7 +80,6 @@ e.on('message', function(context) {
 
 
 - WebSocket-Node Apache License Version 2.0
-
 	https://github.com/Worlize/WebSocket-Node
 	https://github.com/Worlize/WebSocket-Node/blob/master/LICENSE
 
@@ -57,5 +89,6 @@ e.on('message', function(context) {
 - jp.a840.websocket.websocket-client MIT License
 	https://github.com/hashio/websocket-client
 	https://github.com/hashio/websocket-client/blob/master/LICENSE
+	https://github.com/wsky/websocket-client
 
 
