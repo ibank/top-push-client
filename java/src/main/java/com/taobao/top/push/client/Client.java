@@ -2,6 +2,9 @@ package com.taobao.top.push.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.tmall.top.push.messages.MessageIO;
@@ -14,6 +17,7 @@ import jp.a840.websocket.exception.WebSocketException;
 import jp.a840.websocket.frame.Frame;
 import jp.a840.websocket.frame.rfc6455.BinaryFrame;
 import jp.a840.websocket.frame.rfc6455.FrameRfc6455;
+import jp.a840.websocket.frame.rfc6455.PingFrame;
 import jp.a840.websocket.frame.rfc6455.TextFrame;
 import jp.a840.websocket.handler.WebSocketHandler;
 import jp.a840.websocket.impl.WebSocketImpl;
@@ -21,15 +25,20 @@ import jp.a840.websocket.impl.WebSocketImpl;
 public class Client {
 	private final static String MQTT = "mqtt";
 	private final static int MAXSIZE = 1024;
+	private final static int MAXIDLE = 60000;
 	private String protocol;
 	private String self;
 	private MessageHandler handler;
 	private WebSocket socket;
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
+	private Timer pingTimer;
+	private boolean pingFlag;
+	private TimerTask pingTimerTask;
 
 	public Client(String clientFlag) {
 		this.self = clientFlag;
 		this.bufferQueue = new ConcurrentLinkedQueue<byte[]>();
+		this.pingTimer = new Timer(true);
 	}
 
 	public void setMessageHandler(MessageHandler handler) {
@@ -55,6 +64,8 @@ public class Client {
 			}
 
 			public void onMessage(WebSocket socket, Frame frame) {
+				delayNextPing();
+
 				if (frame instanceof BinaryFrame) {
 					if (handler == null)
 						return;
@@ -62,6 +73,7 @@ public class Client {
 					ByteBuffer buffer = frame.getContents();
 					String messageFrom;
 					int messageType = 0;
+					int messageBodyFormat = 0;
 					int remainingLength = 0;
 
 					if (MQTT.equalsIgnoreCase(protocol)) {
@@ -69,16 +81,18 @@ public class Client {
 						MqttMessageIO.parseClientReceiving(message, buffer);
 						messageType = message.messageType;
 						messageFrom = message.from;
+						messageBodyFormat = message.bodyFormat;
 						remainingLength = message.remainingLength;
 					} else {
 						messageType = MessageIO.readMessageType(buffer);
 						messageFrom = MessageIO.readClientId(buffer);
+						messageBodyFormat = MessageIO.readBodyFormat(buffer);
 						remainingLength = MessageIO.readRemainingLength(buffer);
 					}
 
 					MessageContext context = new MessageContext(base,
 							messageFrom);
-					handler.onMessage(messageType, MessageBodyFormat.JSON,
+					handler.onMessage(messageType, messageBodyFormat,
 							buffer.array(),
 							buffer.arrayOffset() + buffer.position(),
 							remainingLength, context);
@@ -89,10 +103,12 @@ public class Client {
 			}
 
 			public void onError(WebSocket socket, WebSocketException e) {
+				stopPing();
 				e.printStackTrace();
 			}
 
 			public void onClose(WebSocket socket) {
+				stopPing();
 				System.err.println("Closed");
 			}
 		}, this.protocol);
@@ -105,6 +121,7 @@ public class Client {
 			base.wait(2000);
 		}
 		this.socket = startSocket;
+		this.doPing();
 		System.out.println(String.format("connected to server %s", uri));
 		return this;
 	}
@@ -125,6 +142,7 @@ public class Client {
 		} else {
 			MessageIO.writeMessageType(buffer, messageType);
 			MessageIO.writeClientId(buffer, to);
+			MessageIO.writeBodyFormat(buffer, messageBodyFormat);
 			MessageIO.writeRemainingLength(buffer, length);
 			buffer.put(messageBody, offset, length);
 		}
@@ -142,6 +160,38 @@ public class Client {
 			e.printStackTrace();
 		} finally {
 			this.returnBuffer(back);
+		}
+
+		this.delayNextPing();
+	}
+
+	private void stopPing() {
+		this.pingTimer.cancel();
+	}
+
+	private void delayNextPing() {
+		pingFlag = true;
+	}
+
+	private void doPing() {
+		this.pingTimerTask = new TimerTask() {
+			public void run() {
+				if (!pingFlag)
+					ping();
+				pingFlag = false;
+			}
+		};
+		this.pingTimer.schedule(this.pingTimerTask, new Date(), MAXIDLE);
+	}
+
+	private void ping() {
+		try {
+			PingFrame pingFrame = new PingFrame();
+			pingFrame.mask();
+			this.socket.send(pingFrame);
+			System.out.println("ping");
+		} catch (WebSocketException e) {
+			e.printStackTrace();
 		}
 	}
 
