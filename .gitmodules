@@ -1,0 +1,3 @@
+[submodule "external/websocket-client"]
+	path = external/websocket-client
+	url = git://github.com/wsky/websocket-client.git
