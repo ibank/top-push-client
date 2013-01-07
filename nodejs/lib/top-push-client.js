@@ -17,35 +17,10 @@ var message={
 	messageType: 1,
 	from: '', //receiving
 	to: '', //sending
+	bodyFormat: 0,
 	remainingLength: 100,
 	body: {}
 }
-
-//easy-rpc format
-var request = { Command: 'isOnline', Arguments: { id: 'targetId' }};
-var response = { IsError: false, ErrorPhase: '', Result: '' };
-
-
-//usage
-
-backend('yourId', 'ws://localhost/backend').getTarget(
-	'targetId', 
-	function(target) {
-		target.sendMessage({
-			MessageId: "20121221000000001",
-			Content: "hello world!"
-		});
-	}
-).on('confirm', function(confirm) {
-	//do something
-});
-
-var e = frontend('yourId', 'ws://localhost/frontend');
-e.on('message', function(context) {
-	var msg = context.message;
-	//...
-	context.confirm();
-});
 */
 
 var	EventEmitter 	= require('events').EventEmitter,
@@ -53,164 +28,42 @@ var	EventEmitter 	= require('events').EventEmitter,
 	PING_INTERVAL 	= 60000,
 	SIZE_MSG 		= 1024,
 	PROTOCOL 		= 'default', //nodejs version do not impl other protocol
-	ENCODING 		= 'utf-8',
-	MessageType 	= { PUBLISH: 1, PUBCONFIRM: 2 };
+	ENCODING 		= 'utf-8';
 
-module.exports.backend = function(origin, uris) {
-	//multi-server for polling
-	var connections = new Array(uris.length);
-	var e = endpoint(origin);
-
-	e.getTarget = function(target, onFind) {
-		for(var i = 0; i< connections.length; i++) {
-			if(!connections[i]) {
-				//wait util all server conneted
-				setTimeout(function() { e.getTarget(target, onFind); }, 200);
-				return this;
-			}
-		}
-
-		getTargetOnWhichServer(target, function(connection) {
-			//you can sendMessage, after server found
-			onFind({
-				sendMessage: function(messageBody){
-					connection.sendMessage(writeMessage({
-						messageType: MessageType.PUBLISH,
-						to: target,
-						body: messageBody
-					}, getBuffer()));
-				}
-			});
-		});
-
-		return this;
-	};
-
-	function getTargetOnWhichServer(target, onGetServer) {
-		for(var i = 0; i< connections.length; i++) {
-			var conn = connections[i];
-			if(conn == 0) continue;
-			conn.once('response', function(response) {
-				if(response.Result == 'true') {
-					onGetServer(conn);
-				}
-			});
-			conn.sendUTF(JSON.stringify(createIsOnlineRequest(target)));
-		}
-	}
-	//easy rpc request
-	function createIsOnlineRequest(target) {
-		return { Command: 'isOnline', Arguments: { id: target }};
-	}
-
-	//connect to all push-server, fill connections
-	for(var i = 0; i< uris.length; i++) {
-		(function(j){
-			ws(
-				function(connection) {
-					connections[j] = connection;
-				},
-				function(message) {
-					if(message.type == 'utf8') {
-						//easy rpc response
-						//emit to connection
-						connections[j].emit('response', JSON.parse(message.utf8Data));
-					} else if(message.type == 'binary') {
-						var msg = readMessage(message.binaryData);
-						if(msg.messageType == MessageType.PUBCONFIRM)
-							e.emit('confirm', msg.body);
-					}
-				},
-				//TODO:reconnect after events below
-				function(fail) {
-					connections[j] = 0;
-				},
-				function(error) {
-					connections[j] = 0;
-				},
-				function(closeCode, closeDescription) {
-					connections[j] = 0;
-				}
-			).connect(uris[j], PROTOCOL, origin);
-		})(i);
-	}
-	return e;
-}
-
-module.exports.frontend = function(origin, uri) {
-	var e = endpoint(origin);
+module.exports.client = function(flag, uri) {
+	var e = endpoint(flag);
 	var conn;
-	var queue = {
-		offset: 0,
-		size: 50,
-		array: new Array(50),
-		add: function(i) { this.array[this.offset++] = i; },
-		clear: function() { this.offset = 0; },
-		isFull: function() { return this.offset == this.size; }
-	};
 
 	ws(
 		function(connection) {
 			conn = connection;
-			doConfirm();
+			e.emit('connect', { sendMessage: send });
 		},
 		function(message) {
 			if(message.type == 'binary') {
 				var msg = readMessage(message.binaryData);
-
-				if(msg.messageType != MessageType.PUBLISH) 
-					return;
-
 				e.emit('message', {
+					messageType: msg.messageType,
 					message: msg.body,
-					confirm: function() {
-						doConfirm();
-						if(queue.isFull())
-							batchConfirm();
-
-						queue.add({
-							to: msg.from,
-							id: msg.body.MessageId
-						});
+					reply: function(messageType, messageBody) {
+						send(msg.from, messageType, messageBody);
 					}
 				});
 			}
 		}
-	).connect(uri, PROTOCOL, origin);
+	).connect(uri, PROTOCOL, flag);
 
-	//TODO:do reconnect in timer loop?
-	var timer;
-	function doConfirm() {
-		if(timer != null)
-			clearTimeout(timer);
-		timer = setTimeout(function() {
-			batchConfirm();
-			doConfirm();
-		}, 2000);
-	}
-	function batchConfirm() {
-		var temp = {};
-		for(var i = 0; i <= queue.offset; i++) {
-			var item = queue.array[i];
-			queue.array[i] = null;
-			if(item == null) continue;
-			if(!temp[item.to])
-				temp[item.to] = [];
-			temp[item.to] = temp[item.to].concat([ item.id ]);
-		}
-		queue.clear();
-
-		for(var to in temp) {
-			conn.sendMessage(writeMessage({
-				messageType: MessageType.PUBCONFIRM,
-				to: to,
-				body: temp[to]
-			}, getBuffer()));
-		}
+	function send(to, messageType, messageBody) {
+		conn.sendMessage(writeMessage({
+			messageType: messageType,
+			to: to,
+			body: messageBody
+		}, getBuffer()));
 	}
 
 	return e;
 }
+
 
 function endpoint(id) {
 	var e = { 
@@ -293,28 +146,34 @@ function ws(onConnect, onMessage, onConnectFailed, onError, onClose) {
 function getBuffer() {
 	return new Buffer(SIZE_MSG);
 }
+function returnBuffer() {
+	
+}
 //message protocol refer to
 //https://github.com/wsky/top-push/issues/13
-//0,1-8,9-12,13-N
+//0,1-8,9,10-13,14-N
 function writeMessage(message, buffer) {
 	var type = new Buffer([message.messageType]);
 	var to = new Buffer(padLeft(message.to, 8), ENCODING);
+	var bodyFormat = new Buffer([0]);
 	var body = new Buffer(JSON.stringify(message.body), ENCODING);
 	message.remainingLength = body.length;
 	type.copy(buffer, 0, 0, 1);
 	to.copy(buffer, 1, 0);
+	bodyFormat.copy(buffer, 9, 0, 1);
 	//BE 00 00 00 28 
 	//LE 28 00 00 00
-	buffer.writeInt32BE(message.remainingLength, 9);
-	body.copy(buffer, 13, 0, message.remainingLength);
+	buffer.writeInt32BE(message.remainingLength, 10);
+	body.copy(buffer, 14, 0, message.remainingLength);
 	return buffer;
 }
 function readMessage(buffer) {
 	var msg = {};
 	msg.messageType = buffer[0];
 	msg.from = buffer.toString(ENCODING, 1, 9);
-	msg.remainingLength = buffer.readInt32BE(9);
-	msg.body = JSON.parse(buffer.toString(ENCODING, 13, 13 + msg.remainingLength));
+	msg.bodyFormat = buffer[9];
+	msg.remainingLength = buffer.readInt32BE(10);
+	msg.body = JSON.parse(buffer.toString(ENCODING, 14, 14 + msg.remainingLength));
 	return msg;
 }
 function padLeft(str, totalWidth) {
@@ -330,8 +189,9 @@ function padLeft(str, totalWidth) {
 /*
 var b = new Buffer(1024);
 var m = {
-	messageType: MessageType.PUBLISH,
+	messageType: 0,
 	to: 'abc',
+	bodyFormat: 0,
 	body: {
 		MessageId: '20121221',
 		Content: 'abc'

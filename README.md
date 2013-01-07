@@ -8,9 +8,11 @@ top push client, can pub/confirm via [top-push](https://github.com/wsky/top-push
 
 - java
 
+extra support MQTT
+
 ```java
 Client client = new Client(flag);
-client.connect("ws://localhost:8080/server", protocol);
+client.connect("ws://localhost:8080/server", 'mqtt');
 client.setMessageHandler(new MessageHandler() {
 	@Override
 	public void onMessage(int messageType, 
@@ -46,24 +48,29 @@ client.setMessageHandler(new MessageHandler() {
 - javascript(nodejs)
 
 ```js
-backend('yourId', ['ws://localhost/backend']).getTarget(
-	'targetId', 
-	function(target) {
-		target.sendMessage({
-			MessageId: "20121221000000001",
-			Content: "hello world!"
-		});
-	}
-).on('confirm', function(confirm) {
-	//do something
-});
+client('your flag', 'ws://localhost:8080/backend')
+	.on('connect', function(context) {
+		// send to self
+		context.sendMessage(
+			'target client flag', 
+			MessageType.PUBLISH, 
+			{ MessageId: "20130104", Content: "hello world! " });
+	})
+	.on('message', function(context) {
+		var msg = context.message;
+		
+		if(context.messageType == MessageType.PUBLISH) {
+			console.log('---- receive publish ----');
+			console.log(msg);
+			context.reply(MessageType.PUBCONFIRM, { MessageId: msg.MessageId });
+		}
 
-var e = frontend('yourId', 'ws://localhost/frontend');
-e.on('message', function(context) {
-	var msg = context.message;
-	//...
-	context.confirm();
-});
+		if(context.messageType == MessageType.PUBCONFIRM) {
+			console.log('---- receive confirm ----');
+			console.log(msg);
+			process.exit();
+		}
+	});
 ```
 
 ## License

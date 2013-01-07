@@ -11,32 +11,30 @@
 */
 
 var top 		= require('./lib/top-push-client'),
-	backend 	= top.backend,
-	frontend 	= top.frontend
-	FRONT 		= 'js-front';
+	client 		= top.client,
+	flag		= 'nodejs',
+	MessageType = { PUBLISH: 1, PUBCONFIRM: 2 };
 
-frontend(
-	FRONT, 
-	'ws://localhost:8080/frontend')
+
+client(flag, 'ws://localhost:8080/backend')
+	.on('connect', function(context) {
+		// send to self
+		context.sendMessage(flag, 
+			MessageType.PUBLISH, 
+			{ MessageId: "20130104", Content: "hello world! " });
+	})
 	.on('message', function(context) {
-		console.log('---- frontend receive message ----');
-		console.log(context.message);
-		context.confirm();
-	});
-
-backend('js-back', ['ws://localhost:8080/backend']).getTarget(
-	FRONT, 
-	function(target) {
-		for(var i = 0; i < 10; i++) {
-			target.sendMessage({
-				MessageId: "20121221" + i,
-				Content: "hello world! " + i
-			});
+		var msg = context.message;
+		
+		if(context.messageType == MessageType.PUBLISH) {
+			console.log('---- receive publish ----');
+			console.log(msg);
+			context.reply(MessageType.PUBCONFIRM, { MessageId: msg.MessageId });
 		}
-		console.log('send 10 messages');
-	}
-).on('confirm', function(confirm) {
-	console.log('---- backend receive confirm ----');
-	console.log(confirm);
-	setTimeout(function() { process.exit(); }, 2000);
-});
+
+		if(context.messageType == MessageType.PUBCONFIRM) {
+			console.log('---- receive confirm ----');
+			console.log(msg);
+			process.exit();
+		}
+	});
