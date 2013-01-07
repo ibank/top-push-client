@@ -3,8 +3,10 @@ package com.taobao.top.push.client;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import com.taobao.top.push.client.messages.MessageIO;
-import com.taobao.top.push.client.messages.MessageType;
+import com.tmall.top.push.messages.MessageIO;
+import com.tmall.top.push.messages.MessageType;
+import com.tmall.top.push.mqtt.MqttMessageIO;
+import com.tmall.top.push.mqtt.publish.MqttPublishMessage;
 
 import jp.a840.websocket.WebSocket;
 import jp.a840.websocket.WebSockets;
@@ -82,13 +84,10 @@ public class Client {
 
 	public void sendMessage(String target, int messageType, String bodyFormat,
 			byte[] messageBody, int offset, int length) {
-		// TODO:impl mqtt parse
 		ByteBuffer buffer = ByteBuffer.allocateDirect(1024);
-		MessageIO.writeMessageType(buffer, messageType);
-		MessageIO.writeClientId(buffer, target);
-		MessageIO.writeRemainingLength(buffer, length);
-		buffer.put(messageBody, offset, length);
-
+		MqttPublishMessage pub=new MqttPublishMessage();
+		MqttMessageIO.parseClientSending(pub, buffer);
+		
 		try {
 			FrameRfc6455 frame = (FrameRfc6455) socket.createFrame(buffer);
 			// client to server always mask

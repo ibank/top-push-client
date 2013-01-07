@@ -41,6 +41,7 @@
             <configuration>
               <sources>
                 <source>external/websocket-client/src/main/java</source>
+				<source>external/top-push/src/main/protocol</source>
               </sources>
             </configuration>
           </execution>

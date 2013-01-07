@@ -1,3 +1,6 @@
 [submodule "java/external/websocket-client"]
 	path = java/external/websocket-client
 	url = git://github.com/wsky/websocket-client.git
+[submodule "java/external/top-push"]
+	path = java/external/top-push
+	url = git://github.com/wsky/top-push.git

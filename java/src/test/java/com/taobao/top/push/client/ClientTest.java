@@ -8,7 +8,7 @@ import jp.a840.websocket.exception.WebSocketException;
 import org.junit.Test;
 
 import com.alibaba.fastjson.JSON;
-import com.taobao.top.push.client.messages.MessageType;
+import com.tmall.top.push.messages.MessageType;
 
 public class ClientTest {
 	@Test
