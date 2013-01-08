@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.tmall.top.push.messages.MessageIO;
 import com.tmall.top.push.mqtt.MqttMessageIO;
+import com.tmall.top.push.mqtt.MqttMessageType;
 import com.tmall.top.push.mqtt.publish.MqttPublishMessage;
 
 import jp.a840.websocket.WebSocket;
@@ -58,6 +59,7 @@ public class Client {
 
 		WebSocket startSocket = WebSockets.create(uri, new WebSocketHandler() {
 			public void onOpen(WebSocket socket) {
+				// TODO:after open, send CONNECT if mqtt
 				synchronized (base) {
 					base.notify();
 				}
@@ -77,6 +79,16 @@ public class Client {
 					int remainingLength = 0;
 
 					if (MQTT.equalsIgnoreCase(protocol)) {
+						int mqttMessageType = MqttMessageIO
+								.parseMessageType(buffer.get(0));
+						if (mqttMessageType == MqttMessageType.ConnectAck) {
+							// TODO:deal with CONNACK
+							return;
+						} else if (mqttMessageType != MqttMessageType.Publish) {
+							System.err.println("Not Implement MqttMessageType:"
+									+ mqttMessageType);
+							return;
+						}
 						MqttPublishMessage message = new MqttPublishMessage();
 						MqttMessageIO.parseClientReceiving(message, buffer);
 						messageType = message.messageType;
