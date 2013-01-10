@@ -12,6 +12,16 @@ import com.tmall.top.push.messages.MessageType;
 
 public class ClientTest {
 	@Test
+	public void connect_test() throws WebSocketException, IOException,
+			InterruptedException {
+		Client client = new Client("java");
+		client.setMaxIdle(100);
+		client.connect("ws://localhost:8080/backend");
+		client.connect("ws://localhost:8080/backend");
+		//Thread.sleep(1000000);
+	}
+	
+	@Test
 	public void pub_confirm_test() throws WebSocketException, IOException,
 			InterruptedException {
 		pub_confirm_test("java1", "", 100);

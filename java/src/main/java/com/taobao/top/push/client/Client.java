@@ -25,21 +25,38 @@ import jp.a840.websocket.impl.WebSocketImpl;
 
 public class Client {
 	private final static String MQTT = "mqtt";
-	private final static int MAXSIZE = 1024;
-	private final static int MAXIDLE = 60000;
+	private int maxMessageSize = 1024;
+	private int maxIdle = 60000;
+
+	private String uri;
 	private String protocol;
 	private String self;
 	private MessageHandler handler;
 	private WebSocket socket;
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
-	private Timer pingTimer;
+
 	private boolean pingFlag;
+	private Timer pingTimer;
 	private TimerTask pingTimerTask;
+
+	private WebSocketException exception;
+	private int reconnectInterval = 5000;
+	private int reconnectCount;
+	private Timer reconnecTimer;
+	private TimerTask reconnecTimerTask;
 
 	public Client(String clientFlag) {
 		this.self = clientFlag;
 		this.bufferQueue = new ConcurrentLinkedQueue<byte[]>();
-		this.pingTimer = new Timer(true);
+		this.doReconnect();
+	}
+
+	public void setMaxIdle(int maxIdle) {
+		this.maxIdle = maxIdle;
+	}
+
+	public void setMaxMessageSize(int maxMessageSize) {
+		this.maxMessageSize = maxMessageSize;
 	}
 
 	public void setMessageHandler(MessageHandler handler) {
@@ -53,12 +70,14 @@ public class Client {
 
 	public Client connect(String uri, String messageProtocol)
 			throws WebSocketException, IOException, InterruptedException {
+		this.uri = uri;
 		// message protocol to cover top-push protocol
 		this.protocol = messageProtocol;
 		final Client base = this;
 
 		WebSocket startSocket = WebSockets.create(uri, new WebSocketHandler() {
 			public void onOpen(WebSocket socket) {
+				base.socket = socket;
 				// TODO:after open, send CONNECT if mqtt
 				synchronized (base) {
 					base.notify();
@@ -116,11 +135,12 @@ public class Client {
 
 			public void onError(WebSocket socket, WebSocketException e) {
 				stopPing();
-				e.printStackTrace();
+				base.exception = e;
 			}
 
 			public void onClose(WebSocket socket) {
 				stopPing();
+				socket.close();
 				System.err.println("Closed");
 			}
 		}, this.protocol);
@@ -132,7 +152,11 @@ public class Client {
 		synchronized (base) {
 			base.wait(2000);
 		}
+
+		if (!startSocket.isConnected())
+			throw this.exception;
 		this.socket = startSocket;
+		this.reconnectCount++;
 		this.doPing();
 		System.out.println(String.format("connected to server %s", uri));
 		return this;
@@ -178,7 +202,10 @@ public class Client {
 	}
 
 	private void stopPing() {
-		this.pingTimer.cancel();
+		if (this.pingTimer != null) {
+			this.pingTimer.cancel();
+			this.pingTimer = null;
+		}
 	}
 
 	private void delayNextPing() {
@@ -186,6 +213,7 @@ public class Client {
 	}
 
 	private void doPing() {
+		this.stopPing();
 		this.pingTimerTask = new TimerTask() {
 			public void run() {
 				if (!pingFlag)
@@ -194,26 +222,51 @@ public class Client {
 			}
 		};
 		Date begin = new Date();
-		begin.setTime(new Date().getTime() + MAXIDLE);
-		this.pingTimer.schedule(this.pingTimerTask, begin, MAXIDLE);
+		begin.setTime(new Date().getTime() + maxIdle);
+		this.pingTimer = new Timer(true);
+		this.pingTimer.schedule(this.pingTimerTask, begin, maxIdle);
 	}
 
 	private void ping() {
+		if (this.socket == null || !this.socket.isConnected())
+			return;
 		try {
 			PingFrame pingFrame = new PingFrame();
 			pingFrame.mask();
 			this.socket.send(pingFrame);
-			System.out.println("ping");
+			System.out.println("ping#" + this.reconnectCount);
 		} catch (WebSocketException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void doReconnect() {
+		this.reconnecTimerTask = new TimerTask() {
+			@Override
+			public void run() {
+				if (socket != null && !socket.isConnected()) {
+					try {
+						connect(uri, protocol);
+					} catch (WebSocketException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
+		this.reconnecTimer = new Timer(true);
+		this.reconnecTimer.schedule(this.reconnecTimerTask, new Date(),
+				this.reconnectInterval);
 	}
 
 	// easy buffer pool
 	private byte[] getBuffer() {
 		byte[] buffer = this.bufferQueue.poll();
 		if (buffer == null)
-			buffer = new byte[MAXSIZE];
+			buffer = new byte[maxMessageSize];
 		return buffer;
 	}
 
