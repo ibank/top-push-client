@@ -193,7 +193,9 @@ public class Client {
 				pingFlag = false;
 			}
 		};
-		this.pingTimer.schedule(this.pingTimerTask, new Date(), MAXIDLE);
+		Date begin = new Date();
+		begin.setTime(new Date().getTime() + MAXIDLE);
+		this.pingTimer.schedule(this.pingTimerTask, begin, MAXIDLE);
 	}
 
 	private void ping() {
