@@ -18,3 +18,5 @@ packages
 bin
 obj
 *.user
+*.suo
+build

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>TopPushClient</id>
+    <version>1.0</version>
+    <title>Top Push Client</title>
+    <authors>houkun</authors>
+    <owners />
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+    </description>
+    <copyright>2013</copyright>
+    <language>zh-CN</language>
+    <dependencies>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="build\lib\net20\TopPushClient.dll" target="lib\net20\TopPushClient.dll" />
+    <file src="build\lib\net20\TopPushClient.xml" target="lib\net20\TopPushClient.xml" />
+    <file src="build\lib\net20\TopPushClient.pdb" target="lib\net20\TopPushClient.pdb" />
+
+    <file src="build\lib\net35\TopPushClient.dll" target="lib\net35\TopPushClient.dll" />
+    <file src="build\lib\net35\TopPushClient.xml" target="lib\net35\TopPushClient.xml" />
+    <file src="build\lib\net35\TopPushClient.pdb" target="lib\net35\TopPushClient.pdb" />
+
+    <file src="build\lib\net40\TopPushClient.dll" target="lib\net40\TopPushClient.dll" />
+    <file src="build\lib\net40\TopPushClient.xml" target="lib\net40\TopPushClient.xml" />
+    <file src="build\lib\net40\TopPushClient.pdb" target="lib\net40\TopPushClient.pdb" />
+  </files>
+</package>
