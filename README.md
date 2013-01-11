@@ -110,4 +110,15 @@ client('your flag', 'ws://localhost:8080/backend')
 
 	https://github.com/wsky/websocket-client
 
+- websocket-sharp MIT License
+	
+	https://github.com/sta/websocket-sharp
+
+	http://www.opensource.org/licenses/mit-license.php
+
+- nmqtt
+	
+	https://github.com/markallanson/nmqtt
+
+	https://github.com/markallanson/nmqtt/blob/master/LICENSE.txt
 

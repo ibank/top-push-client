@@ -136,6 +136,7 @@ public class Client {
 			public void onError(WebSocket socket, WebSocketException e) {
 				stopPing();
 				base.exception = e;
+				e.printStackTrace();
 			}
 
 			public void onClose(WebSocket socket) {
