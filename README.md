@@ -114,11 +114,15 @@ client('your flag', 'ws://localhost:8080/backend')
 	
 	https://github.com/sta/websocket-sharp
 
+	https://github.com/wsky/websocket-sharp/tree/net20
+
 	http://www.opensource.org/licenses/mit-license.php
 
 - nmqtt
 	
 	https://github.com/markallanson/nmqtt
+
+	https://github.com/wsky/nmqtt/tree/net20
 
 	https://github.com/markallanson/nmqtt/blob/master/LICENSE.txt
 

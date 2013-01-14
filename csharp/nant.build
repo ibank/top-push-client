@@ -38,8 +38,22 @@
       <exec program="sh" commandline="nuget.install.sh" workingdir="${dir}" />
     </if>
   </target>
+  
+  <target name="generated" description="">
+    <copy todir="${dir}/src/TopPushClient/generated/nmqtt">
+      <fileset basedir="${dir}/external/nmqtt/nMQTT">
+        <include name="**/*.*" />
+      </fileset>
+    </copy>
+    <copy todir="${dir}/src/TopPushClient/generated/websocket-sharp">
+      <fileset basedir="${dir}/external/websocket-sharp/websocket-sharp">
+        <include name="**/*.*" />
+      </fileset>
+    </copy>
+  </target>
 
   <target name="all">
+    <call target="generated"></call>
     <call target="net20"></call>
     <call target="net35"></call>
   </target>
