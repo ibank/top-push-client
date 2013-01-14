@@ -35,6 +35,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Client.cs" />
+    <Compile Include="Frontend.cs" />
     <Compile Include="generated\nmqtt\ClientIdentifierException.cs" />
     <Compile Include="generated\nmqtt\Constants.cs" />
     <Compile Include="generated\nmqtt\Encoding\MqttEncoding.cs" />
@@ -143,6 +145,9 @@
     <Compile Include="generated\websocket-sharp\WsReceivedTooBigMessageException.cs" />
     <Compile Include="generated\websocket-sharp\WsState.cs" />
     <Compile Include="generated\websocket-sharp\WsStream.cs" />
+    <Compile Include="MessageContext.cs" />
+    <Compile Include="MessageHandler.cs" />
+    <Compile Include="Messages\MessageIO.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />
