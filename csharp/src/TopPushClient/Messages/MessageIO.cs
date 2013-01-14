@@ -31,53 +31,53 @@ namespace TopPushClient
         // client send: client -> server, write "to"
         // client receive: client <- server, read "from"
 
-        public static int parseMessageType(byte headerByte)
+        public static int ParseMessageType(byte headerByte)
         {
             return headerByte;
         }
 
-        public static int readMessageType(BinaryReader buffer)
+        public static int ReadMessageType(BinaryReader buffer)
         {
             return buffer.ReadByte();
         }
 
-        public static void writeMessageType(BinaryWriter buffer, int messageType)
+        public static void WriteMessageType(BinaryWriter buffer, int messageType)
         {
             buffer.Write((byte)messageType);
         }
 
-        public static String readClientId(BinaryReader buffer)
+        public static String ReadClientId(BinaryReader buffer)
         {
-            return readString(buffer, 8).Trim();
+            return ReadString(buffer, 8).Trim();
         }
 
-        public static void writeClientId(BinaryWriter buffer, String id)
+        public static void WriteClientId(BinaryWriter buffer, String id)
         {
-            writeString(buffer, padClientId(id));
+            WriteString(buffer, PadClientId(id));
         }
 
-        public static int readBodyFormat(BinaryReader buffer)
+        public static int ReadBodyFormat(BinaryReader buffer)
         {
             return buffer.ReadByte();
         }
 
-        public static void writeBodyFormat(BinaryWriter buffer, int bodyFormat)
+        public static void WriteBodyFormat(BinaryWriter buffer, int bodyFormat)
         {
             buffer.Write((byte)bodyFormat);
         }
 
-        public static int readRemainingLength(BinaryReader buffer)
+        public static int ReadRemainingLength(BinaryReader buffer)
         {
             return buffer.ReadInt32();
         }
 
-        public static void writeRemainingLength(BinaryWriter buffer, int remainingLength)
+        public static void WriteRemainingLength(BinaryWriter buffer, int remainingLength)
         {
             buffer.Write(remainingLength);
         }
 
         // HACK:string encoding? a-zA-Z0-9 not necessary
-        public static String readString(BinaryReader buffer, int length)
+        public static String ReadString(BinaryReader buffer, int length)
         {
             StringBuilder sb = new StringBuilder(length);
             for (int i = 0; i < length; i++)
@@ -85,21 +85,21 @@ namespace TopPushClient
             return sb.ToString();
         }
 
-        public static void writeString(BinaryWriter buffer, String value)
+        public static void WriteString(BinaryWriter buffer, String value)
         {
             for (int i = 0; i < value.Length; i++)
                 buffer.Write((byte)value[i]);
         }
 
-        public static String padClientId(String id)
+        public static String PadClientId(String id)
         {
             // HACK:8 is faster!
             if (id != null && id.Length == 8)
                 return id;
-            return string.Format("%8s", id);// bad perf
+            return id.PadLeft(8, ' ');// bad perf
         }
 
-        public static int getFullMessageSize(int remainingLength)
+        public static int GetFullMessageSize(int remainingLength)
         {
             return remainingLength + 1 + 8 + 1 + 4;
         }
