@@ -48,11 +48,11 @@ namespace TopPushClient
             this._handler = handler;
         }
 
-        public void Connect(String uri)
+        public void Connect(string uri)
         {
             this.Connect(uri, null);
         }
-        public void Connect(String uri, String messageProtocol)
+        public void Connect(string uri, string messageProtocol)
         {
             this._uri = uri;
             this._protocol = messageProtocol;//message protocol to cover top-push protocol
@@ -90,7 +90,7 @@ namespace TopPushClient
             this.DoPing();
         }
 
-        public void SendMessage(String to
+        public void SendMessage(string to
             , int messageType
             , int messageBodyFormat
             , byte[] messageBody

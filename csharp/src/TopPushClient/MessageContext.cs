@@ -9,7 +9,7 @@ namespace TopPushClient
         private String messageFrom;
         private Client client;
 
-        public MessageContext(Client client, String messageFrom)
+        public MessageContext(Client client, string messageFrom)
         {
             this.messageFrom = messageFrom;
             this.client = client;

@@ -68,12 +68,12 @@ namespace TopPushClient
 
         public static int ReadRemainingLength(BinaryReader buffer)
         {
-            return buffer.ReadInt32();
+            return SwapInt32(buffer.ReadInt32());
         }
 
         public static void WriteRemainingLength(BinaryWriter buffer, int remainingLength)
         {
-            buffer.Write(remainingLength);
+            buffer.Write(SwapInt32(remainingLength));
         }
 
         // HACK:string encoding? a-zA-Z0-9 not necessary
