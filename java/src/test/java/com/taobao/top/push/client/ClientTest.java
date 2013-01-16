@@ -2,6 +2,7 @@ package com.taobao.top.push.client;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 
 import jp.a840.websocket.exception.WebSocketException;
 
@@ -18,9 +19,9 @@ public class ClientTest {
 		client.setMaxIdle(100);
 		client.connect("ws://localhost:8080/backend");
 		client.connect("ws://localhost:8080/backend");
-		//Thread.sleep(1000000);
+		// Thread.sleep(1000000);
 	}
-	
+
 	@Test
 	public void pub_confirm_test() throws WebSocketException, IOException,
 			InterruptedException {
@@ -39,8 +40,10 @@ public class ClientTest {
 			final int total) throws WebSocketException, IOException,
 			InterruptedException {
 		count = 0;
+		HashMap<String, String> headers = new HashMap<String, String>();
+		headers.put("id", "abc");
 		Client client = new Client(flag);
-		client.connect("ws://localhost:8080/backend", protocol);
+		client.connect("ws://localhost:8080/backend", protocol, headers);
 		client.setMessageHandler(new MessageHandler() {
 			@Override
 			public void onMessage(int messageType, int bodyFormat,
@@ -92,7 +95,7 @@ public class ClientTest {
 			client.sendMessage(flag, MessageType.PUBLISH,
 					MessageBodyFormat.JSON, body, 0, body.length);
 		}
-		
+
 		synchronized (flag) {
 			flag.wait();
 		}

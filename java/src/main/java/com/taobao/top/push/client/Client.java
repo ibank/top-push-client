@@ -3,6 +3,7 @@ package com.taobao.top.push.client;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -65,10 +66,20 @@ public class Client {
 
 	public Client connect(String uri) throws WebSocketException, IOException,
 			InterruptedException {
-		return this.connect(uri, "");
+		return this.connect(uri, "", null);
 	}
 
-	public Client connect(String uri, String messageProtocol)
+	public Client connect(String uri, HashMap<String, String> headers) throws WebSocketException, IOException,
+			InterruptedException {
+		return this.connect(uri, "", headers);
+	}
+
+	public Client connect(String uri, String messageProtocol) throws WebSocketException, IOException,
+			InterruptedException {
+		return this.connect(uri, messageProtocol, null);
+	}
+
+	public Client connect(String uri, String messageProtocol, HashMap<String, String> headers)
 			throws WebSocketException, IOException, InterruptedException {
 		this.uri = uri;
 		// message protocol to cover top-push protocol
@@ -147,6 +158,12 @@ public class Client {
 		}, this.protocol);
 
 		((WebSocketImpl) startSocket).setOrigin(this.self);
+		
+		if (headers != null) {
+			for (String h : headers.keySet()) {
+				((WebSocketImpl) startSocket).getRequestHeader().addHeader(h, headers.get(h));
+			}
+		}
 		startSocket.setBlockingMode(false);
 		startSocket.connect();
 
