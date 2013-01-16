@@ -151,47 +151,46 @@ function returnBuffer() {
 }
 //message protocol refer to
 //https://github.com/wsky/top-push/issues/13
-//0,1-8,9,10-13,14-N
 function writeMessage(message, buffer) {
+	var l = message.to.length;
 	var type = new Buffer([message.messageType]);
-	var to = new Buffer(padLeft(message.to, 8), ENCODING);
+	var toLength = new Buffer([l]);
+	var to = new Buffer(message.to, ENCODING);
 	var bodyFormat = new Buffer([0]);
 	var body = new Buffer(JSON.stringify(message.body), ENCODING);
 	message.remainingLength = body.length;
-	type.copy(buffer, 0, 0, 1);
-	to.copy(buffer, 1, 0);
-	bodyFormat.copy(buffer, 9, 0, 1);
+
+	type.copy(buffer, 0);
+	toLength.copy(buffer, 1);
+	to.copy(buffer, 2);
+	bodyFormat.copy(buffer, 2 + l);
 	//BE 00 00 00 28 
 	//LE 28 00 00 00
-	buffer.writeInt32BE(message.remainingLength, 10);
-	body.copy(buffer, 14, 0, message.remainingLength);
+	buffer.writeInt32BE(message.remainingLength, 2 + l + 1);
+	body.copy(buffer, 2 + l + 1 + 4, 0, message.remainingLength);
 	return buffer;
 }
 function readMessage(buffer) {
 	var msg = {};
 	msg.messageType = buffer[0];
-	msg.from = buffer.toString(ENCODING, 1, 9);
-	msg.bodyFormat = buffer[9];
-	msg.remainingLength = buffer.readInt32BE(10);
-	msg.body = JSON.parse(buffer.toString(ENCODING, 14, 14 + msg.remainingLength));
+	var l = buffer[1];
+	msg.from = buffer.toString(ENCODING, 2, 2 + l);
+	msg.bodyFormat = buffer[2 + l];
+	msg.remainingLength = buffer.readInt32BE(2 + l + 1);
+	console.log(msg);
+	msg.body = JSON.parse(buffer.toString(ENCODING, 
+		2 + l + 1 + 4,
+		2 + l + 1 + 4 + msg.remainingLength));
 	return msg;
-}
-function padLeft(str, totalWidth) {
-	if(str.length >= totalWidth) 
-		return str;
-	var prefix = '';
-	for(i = 1; i <= totalWidth - this.length; i++)
-		prefix += ' ';
-	return prefix + str;
 }
 
 //tests
-/*
+
 var b = new Buffer(1024);
 var m = {
-	messageType: 0,
+	messageType: 2,
 	to: 'abc',
-	bodyFormat: 0,
+	bodyFormat: 1,
 	body: {
 		MessageId: '20121221',
 		Content: 'abc'
@@ -201,4 +200,4 @@ writeMessage(m, b);
 console.log(m);
 console.log(b);
 console.log(readMessage(b));
-*/
+
