@@ -5,18 +5,31 @@ using System.Text;
 
 namespace TopPushClient
 {
+    /// <summary>custom top-push client for special usage
+    /// </summary>
     public class Frontend
     {
         private static readonly String PROTOCOL = "mqtt";
         private Client _client;
         private PublishMessageHandler _handler;
-        /// <summary>
-        /// </summary>
-        /// <param name="clientFlag">client identity string</param>
-        public Frontend(string clientFlag)
+
+        private string _appKey;
+        private int _userId = -1;
+        private int _groupId = 1;
+
+        public Frontend(string appKey) : this(appKey, -1, 1) { }
+        public Frontend(string appKey, int userId) : this(appKey, userId, 1) { }
+        public Frontend(string appKey, int userId, int groupId)
         {
-            this._client = new Client(clientFlag);
+            this._appKey = appKey;
+            this._userId = userId;
+            this._groupId = groupId;
+            this._client = new Client(string.Format("{0}{1}{2}"
+                , this._appKey
+                , this._userId
+                , this._groupId));
         }
+
         /// <summary>Set Message Handler
         /// </summary>
         /// <param name="handler"></param>
@@ -30,7 +43,11 @@ namespace TopPushClient
         /// <param name="uri">push server address, eg: ws://localhost:8080/frontend</param>
         public void Connect(string uri)
         {
-            this._client.Connect(uri, PROTOCOL);
+            var headers = new Dictionary<string, string>();
+            headers.Add("appkey", this._appKey);
+            headers.Add("userId", this._userId.ToString());
+            headers.Add("groupId", this._groupId.ToString());
+            this._client.Connect(uri, PROTOCOL, headers);
         }
 
         private void SetHandler()
@@ -51,7 +68,7 @@ namespace TopPushClient
                 , int length
                 , MessageContext context)
             {
-                if (messageType != MessageType.PUBLISH) 
+                if (messageType != MessageType.PUBLISH)
                     return;
 
                 using (var stream = new MemoryStream(messageBody, offset, length))

@@ -50,9 +50,17 @@ namespace TopPushClient
 
         public void Connect(string uri)
         {
-            this.Connect(uri, string.Empty);
+            this.Connect(uri, string.Empty, null);
+        }
+        public void Connect(string uri, IDictionary<string, string> headers)
+        {
+            this.Connect(uri, string.Empty, headers);
         }
         public void Connect(string uri, string messageProtocol)
+        {
+            this.Connect(uri, string.Empty, null);
+        }
+        public void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
         {
             this._uri = uri;
             this._protocol = messageProtocol;//message protocol to cover top-push protocol
@@ -87,6 +95,7 @@ namespace TopPushClient
                 }
             };
             this._socket.Origin = this._self;
+            this._socket.ExtraHeaders = headers;
             this._socket.Connect();
             this.DoPing();
         }
