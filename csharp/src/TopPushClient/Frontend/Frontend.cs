@@ -16,7 +16,6 @@ namespace TopPushClient
         public Frontend(string clientFlag)
         {
             this._client = new Client(clientFlag);
-            this.SetHandler();
         }
         /// <summary>Set Message Handler
         /// </summary>
@@ -24,6 +23,7 @@ namespace TopPushClient
         public void SetPublishMessageHandler(PublishMessageHandler handler)
         {
             this._handler = handler;
+            this.SetHandler();
         }
         /// <summary>Connect to push server
         /// </summary>

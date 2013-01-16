@@ -50,7 +50,7 @@ namespace TopPushClient
 
         public void Connect(string uri)
         {
-            this.Connect(uri, null);
+            this.Connect(uri, string.Empty);
         }
         public void Connect(string uri, string messageProtocol)
         {
@@ -67,25 +67,26 @@ namespace TopPushClient
                 using (var stream = new MemoryStream(e.RawData))
                 {
                     if (MQTT.Equals(this._protocol, StringComparison.InvariantCultureIgnoreCase))
-                        MqttMessage.CreateFrom(stream);
-
-                    using (var reader = new BinaryReader(stream))
                     {
-                        int messageType = MessageIO.ReadMessageType(reader);
-                        string messageFrom = MessageIO.ReadClientId(reader);
-                        int messageBodyFormat = MessageIO.ReadBodyFormat(reader);
-                        int remainingLength = MessageIO.ReadRemainingLength(reader);
+                        var msg = MqttMessage.CreateFrom(stream);
 
-                        MessageContext context = new MessageContext(this, messageFrom);
-                        this._handler.onMessage(messageType
-                            , messageBodyFormat
-                            , e.RawData
-                            , (int)stream.Position
-                            , remainingLength
-                            , context);
+                        if (!(msg is MqttPublishMessage))
+                            return;
+
+                        using (var payload = new MemoryStream())
+                        {
+                            (msg as MqttPublishMessage).Payload.WriteTo(payload);
+                            payload.Seek(0, SeekOrigin.Begin);
+                            this.OnMessage(payload);
+                        }
+
+                        return;
                     }
+
+                    this.OnMessage(stream);
                 }
             };
+            this._socket.Origin = this._self;
             this._socket.Connect();
             this.DoPing();
         }
@@ -126,6 +127,24 @@ namespace TopPushClient
             }
         }
 
+        private void OnMessage(Stream stream)
+        {
+            using (var reader = new BinaryReader(stream))
+            {
+                int messageType = MessageIO.ReadMessageType(reader);
+                string messageFrom = MessageIO.ReadClientId(reader);
+                int messageBodyFormat = MessageIO.ReadBodyFormat(reader);
+                int remainingLength = MessageIO.ReadRemainingLength(reader);
+
+                MessageContext context = new MessageContext(this, messageFrom);
+                this._handler.onMessage(messageType
+                    , messageBodyFormat
+                    , Ext.ReadBytes(stream, stream.Length)
+                    , 0
+                    , remainingLength
+                    , context);
+            }
+        }
         private void StopPing()
         {
             if (this._pingTimer != null)
@@ -147,7 +166,7 @@ namespace TopPushClient
         }
         private void Ping()
         {
-            if (this._socket == null || !this._socket.IsAlive)
+            if (this._socket == null || this._socket.ReadyState != WsState.OPEN)
                 return;
             try
             {
@@ -173,7 +192,7 @@ namespace TopPushClient
         }
         void reconnecTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (_socket != null && !_socket.IsAlive)
+            if (this._socket != null && this._socket.ReadyState == WsState.CLOSED)
             {
                 try
                 {
@@ -181,7 +200,7 @@ namespace TopPushClient
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    Console.WriteLine("reconnect error: {0}", ex);
                 }
             }
         }

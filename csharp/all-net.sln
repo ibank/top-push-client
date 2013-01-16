@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "external", "external", "{49
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TopPushClient-net20", "src\TopPushClient\TopPushClient-net20.csproj", "{76FCA94F-D9D5-4A63-8BC3-046912CEA908}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TopPushClientTest", "src\TopPushClientTest\TopPushClientTest.csproj", "{25C6CA99-A7FD-4F4E-8EA9-7FE94DACDC64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{76FCA94F-D9D5-4A63-8BC3-046912CEA908}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{76FCA94F-D9D5-4A63-8BC3-046912CEA908}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76FCA94F-D9D5-4A63-8BC3-046912CEA908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25C6CA99-A7FD-4F4E-8EA9-7FE94DACDC64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25C6CA99-A7FD-4F4E-8EA9-7FE94DACDC64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25C6CA99-A7FD-4F4E-8EA9-7FE94DACDC64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25C6CA99-A7FD-4F4E-8EA9-7FE94DACDC64}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
