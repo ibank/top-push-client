@@ -5,32 +5,8 @@ using System.Text;
 
 namespace TopPushClient
 {
-    // parse message using default protocol
     static class MessageIO
     {
-        /*
-         * 1byte MessageType, or extend to 8bit usage, DUP Flag, Body Formatter,
-         * RETAIN
-         * 
-         * 8byte from(receiving)/to(sending) id, support front<-->forward<-->back.
-         * 
-         * 1byte Message body format flag
-         * 
-         * 4byte remainingLength int32, do not need support longer message.
-         * 
-         * ... body/content, maybe serialized by json/protobuf/msgpack/...
-         * 
-         * body example, just resolve/parse by client: - publish message: {
-         * MessageId:"20121221000000001", Content:"hello world!" } - confirm
-         * message: ["20121221000000001", "20121221000000002"]
-         */
-
-        // server send: server -> client, write "from"
-        // server receive: server <- client, read "to"
-
-        // client send: client -> server, write "to"
-        // client receive: client <- server, read "from"
-
         public static int ParseMessageType(byte headerByte)
         {
             return headerByte;
@@ -48,12 +24,13 @@ namespace TopPushClient
 
         public static String ReadClientId(BinaryReader buffer)
         {
-            return ReadString(buffer, 8).Trim();
+            return ReadString(buffer, (int)buffer.ReadByte());
         }
 
         public static void WriteClientId(BinaryWriter buffer, String id)
         {
-            WriteString(buffer, PadClientId(id));
+            buffer.Write((byte)id.Length);
+            WriteString(buffer, id);
         }
 
         public static int ReadBodyFormat(BinaryReader buffer)
@@ -89,14 +66,6 @@ namespace TopPushClient
         {
             for (int i = 0; i < value.Length; i++)
                 buffer.Write((byte)value[i]);
-        }
-
-        public static String PadClientId(String id)
-        {
-            // HACK:8 is faster!
-            if (id != null && id.Length == 8)
-                return id;
-            return id.PadLeft(8, ' ');// bad perf
         }
 
         public static int GetFullMessageSize(int remainingLength)

@@ -7,6 +7,11 @@ namespace TopPushClientTest
 {
     class Program
     {
+        static void ClientTest()
+        { 
+            
+        }
+
         static void Main(string[] args)
         {
             var frontend = new Frontend("csharp");
