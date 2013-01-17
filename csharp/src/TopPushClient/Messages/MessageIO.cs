@@ -24,13 +24,12 @@ namespace TopPushClient
 
         public static String ReadClientId(BinaryReader buffer)
         {
-            return ReadString(buffer, (int)buffer.ReadByte());
+            return ReadString(buffer, 8).Trim();
         }
 
         public static void WriteClientId(BinaryWriter buffer, String id)
         {
-            buffer.Write((byte)id.Length);
-            WriteString(buffer, id);
+            WriteString(buffer, PadClientId(id));
         }
 
         public static int ReadBodyFormat(BinaryReader buffer)
@@ -66,6 +65,14 @@ namespace TopPushClient
         {
             for (int i = 0; i < value.Length; i++)
                 buffer.Write((byte)value[i]);
+        }
+
+        public static String PadClientId(String id)
+        {
+            // HACK:8 is faster!
+            if (id != null && id.Length == 8)
+                return id;
+            return id.PadLeft(8, ' ');// bad perf
         }
 
         public static int GetFullMessageSize(int remainingLength)
