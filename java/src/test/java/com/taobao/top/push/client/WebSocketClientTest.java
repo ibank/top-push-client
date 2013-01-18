@@ -13,7 +13,10 @@ import jp.a840.websocket.frame.rfc6455.FrameRfc6455;
 import org.junit.Test;
 
 public class WebSocketClientTest {
+	
 	@Test
+	public void test(){}
+	
 	public void jp_a840_websocket_text_test() throws WebSocketException,
 			IOException, InterruptedException {
 		final Object lockObject = new Object();
@@ -57,7 +60,6 @@ public class WebSocketClientTest {
 		socket.close();
 	}
 
-	@Test
 	public void jp_a840_websocket_binary_test() throws WebSocketException,
 			IOException, InterruptedException {
 		final Object lockObject = new Object();

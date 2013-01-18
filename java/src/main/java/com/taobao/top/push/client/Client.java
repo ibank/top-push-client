@@ -32,6 +32,7 @@ public class Client {
 	private String uri;
 	private String protocol;
 	private String self;
+	private HashMap<String, String> headers;
 	private MessageHandler handler;
 	private WebSocket socket;
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
@@ -49,6 +50,7 @@ public class Client {
 	public Client(String clientFlag) {
 		this.self = clientFlag;
 		this.bufferQueue = new ConcurrentLinkedQueue<byte[]>();
+		// necessary?
 		this.doReconnect();
 	}
 
@@ -84,6 +86,7 @@ public class Client {
 		this.uri = uri;
 		// message protocol to cover top-push protocol
 		this.protocol = messageProtocol;
+		this.headers = headers;
 		final Client base = this;
 
 		WebSocket startSocket = WebSockets.create(uri, new WebSocketHandler() {
@@ -158,10 +161,10 @@ public class Client {
 		}, this.protocol);
 
 		((WebSocketImpl) startSocket).setOrigin(this.self);
-		
-		if (headers != null) {
-			for (String h : headers.keySet()) {
-				((WebSocketImpl) startSocket).getRequestHeader().addHeader(h, headers.get(h));
+
+		if (this.headers != null) {
+			for (String h : this.headers.keySet()) {
+				((WebSocketImpl) startSocket).getRequestHeader().addHeader(h, this.headers.get(h));
 			}
 		}
 		startSocket.setBlockingMode(false);
@@ -264,7 +267,7 @@ public class Client {
 			public void run() {
 				if (socket != null && !socket.isConnected()) {
 					try {
-						connect(uri, protocol);
+						connect(uri, protocol, headers);
 					} catch (WebSocketException e) {
 						e.printStackTrace();
 					} catch (IOException e) {

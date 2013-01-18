@@ -19,6 +19,7 @@ namespace TopPushClient
         private string _uri;
         private string _protocol;
         private string _self;
+        private IDictionary<string, string> _headers;
         private MessageHandler _handler;
         private WebSocket _socket;
 
@@ -64,6 +65,7 @@ namespace TopPushClient
         {
             this._uri = uri;
             this._protocol = messageProtocol;//message protocol to cover top-push protocol
+            this._headers = headers;
             this._socket = new WebSocket(this._uri, this._protocol);
             this._socket.OnOpen += (s, e) => { this._reconnectCount++; Console.WriteLine("connected to server {0}", this._uri); };
             this._socket.OnClose += (s, e) => { this.StopPing(); Console.WriteLine("Closed: {0}|{1}", e.Code, e.Reason); };
@@ -95,7 +97,7 @@ namespace TopPushClient
                 }
             };
             this._socket.Origin = this._self;
-            this._socket.ExtraHeaders = headers;
+            this._socket.ExtraHeaders = this._headers;
             this._socket.Connect();
             this.DoPing();
         }
@@ -205,7 +207,7 @@ namespace TopPushClient
             {
                 try
                 {
-                    this.Connect(this._uri, this._protocol);
+                    this.Connect(this._uri, this._protocol, this._headers);
                 }
                 catch (Exception ex)
                 {

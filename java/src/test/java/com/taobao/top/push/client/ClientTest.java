@@ -17,8 +17,10 @@ public class ClientTest {
 			InterruptedException {
 		Client client = new Client("java");
 		client.setMaxIdle(100);
-		client.connect("ws://localhost:8080/backend");
-		client.connect("ws://localhost:8080/backend");
+		HashMap<String, String> headers = new HashMap<String, String>();
+		headers.put("appkey", "javatest");
+		client.connect("ws://localhost:8080/frontend", "", headers);
+		client.connect("ws://localhost:8080/frontend", "", headers);
 		// Thread.sleep(1000000);
 	}
 
@@ -41,7 +43,7 @@ public class ClientTest {
 			InterruptedException {
 		count = 0;
 		HashMap<String, String> headers = new HashMap<String, String>();
-		headers.put("id", "abc");
+		headers.put("id", flag);
 		Client client = new Client(flag);
 		client.connect("ws://localhost:8080/backend", protocol, headers);
 		client.setMessageHandler(new MessageHandler() {
