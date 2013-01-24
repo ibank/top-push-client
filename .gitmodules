@@ -7,3 +7,6 @@
 [submodule "csharp/external/nmqtt"]
 	path = csharp/external/nmqtt
 	url = git://github.com/wsky/nmqtt.git
+[submodule "csharp/external/websocket-sharp"]
+	path = csharp/external/websocket-sharp
+	url = git://github.com/wsky/websocket-sharp.git
