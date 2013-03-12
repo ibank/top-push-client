@@ -8,10 +8,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.tmall.top.push.messages.MessageIO;
-import com.tmall.top.push.mqtt.MqttMessageIO;
-import com.tmall.top.push.mqtt.MqttMessageType;
-import com.tmall.top.push.mqtt.publish.MqttPublishMessage;
+import com.taobao.top.push.messages.MessageIO;
+import com.taobao.top.push.mqtt.MqttMessageIO;
+import com.taobao.top.push.mqtt.MqttMessageType;
+import com.taobao.top.push.mqtt.publish.MqttPublishMessage;
 
 import jp.a840.websocket.WebSocket;
 import jp.a840.websocket.WebSockets;

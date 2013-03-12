@@ -9,7 +9,7 @@ import jp.a840.websocket.exception.WebSocketException;
 import org.junit.Test;
 
 import com.alibaba.fastjson.JSON;
-import com.tmall.top.push.messages.MessageType;
+import com.taobao.top.push.messages.MessageType;
 
 public class ClientTest {
 	@Test
@@ -34,6 +34,18 @@ public class ClientTest {
 	public void pub_confirm_mqtt_test() throws WebSocketException, IOException,
 			InterruptedException {
 		pub_confirm_test("java2", "mqtt", 100);
+	}
+
+	@Test
+	public void connect_error_test() {
+	}
+
+	@Test
+	public void reconnect_test() {
+	}
+
+	@Test
+	public void reconnect_error_test() {
 	}
 
 	private static int count;
