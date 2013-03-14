@@ -19,9 +19,11 @@ var top 		= require('./lib/top-push-client'),
 client(flag, 'ws://localhost:8080/backend')
 	.on('connect', function(context) {
 		// send to self
-		context.sendMessage(flag, 
-			MessageType.PUBLISH, 
-			{ MessageId: "20130104", Content: "hello world! " });
+		setTimeout(function() { 
+			context.sendMessage(flag, 
+				MessageType.PUBLISH, 
+				{ MessageId: "20130104", Content: "hello world! " });
+		}, 2000);
 	})
 	.on('message', function(context) {
 		var msg = context.message;
