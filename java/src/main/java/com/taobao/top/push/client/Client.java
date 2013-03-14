@@ -36,7 +36,7 @@ public class Client {
 	private WebSocket socket;
 	private MessageHandler messageHandler;
 	private StateHandler stateHandler;
-	
+
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
 
 	private boolean pingFlag;
@@ -66,13 +66,9 @@ public class Client {
 	protected MessageHandler getMessageHandler() {
 		return this.messageHandler;
 	}
-	
+
 	protected StateHandler getStateHandler() {
 		return this.stateHandler;
-	}
-
-	protected void setSocket(WebSocket socket) {
-		this.socket = socket;
 	}
 
 	protected void setFailure(Exception failure) {
@@ -90,9 +86,9 @@ public class Client {
 	public void setMessageHandler(MessageHandler handler) {
 		this.messageHandler = handler;
 	}
-	
+
 	public void setStateHandler() {
-		
+
 	}
 
 	public Client connect(String uri) throws ClientException {
@@ -126,18 +122,15 @@ public class Client {
 				}
 			}
 			startSocket.setBlockingMode(false);
+			// startSocket.connect(); is sync
+			// https://github.com/wsky/top-push-client/issues/20
 			startSocket.connect();
 		} catch (Exception e) {
 			throw new ClientException("error while connecting", e);
 		}
-
-		// startSocket.connect(); is sync
-		// https://github.com/wsky/top-push-client/issues/20
+		
 		if (this.failure != null)
 			throw new ClientException("connect fail", this.failure);
-		// if (!startSocket.isConnected())
-		// throw new ClientException(String.format("connect timeout in %sms",
-		// 5000));
 
 		this.socket = startSocket;
 		this.reconnectCount++;

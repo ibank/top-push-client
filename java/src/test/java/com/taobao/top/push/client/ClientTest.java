@@ -18,7 +18,7 @@ public class ClientTest {
 		HashMap<String, String> headers = new HashMap<String, String>();
 		headers.put("appkey", "javatest");
 		client.connect("ws://localhost:8080/frontend", "", headers);
-		client.connect("ws://localhost:8080/frontend", "", headers);
+		//client.connect("ws://localhost:8080/frontend", "", headers);
 	}
 
 	@Test
@@ -52,11 +52,7 @@ public class ClientTest {
 	public void reconnect_test() throws ClientException, InterruptedException {
 		Client client = new Client("java");
 		client.connect("ws://localhost:8080/frontend");
-		Thread.sleep(300000);
-	}
-
-	@Test
-	public void reconnect_error_test() {
+		Thread.sleep(3000);
 	}
 
 	private static int count;

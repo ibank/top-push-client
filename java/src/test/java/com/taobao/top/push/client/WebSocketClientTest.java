@@ -49,6 +49,12 @@ public class WebSocketClientTest {
 					public void onClose(WebSocket socket) {
 						System.err.println("Closed");
 					}
+
+					@Override
+					public void onCloseFrame(WebSocket socket, int statusCode, String reasonText) {
+						// TODO Auto-generated method stub
+						
+					}
 				});
 		((WebSocketImpl) socket).setOrigin("java");
 		socket.setBlockingMode(false);
@@ -91,6 +97,12 @@ public class WebSocketClientTest {
 
 					public void onClose(WebSocket socket) {
 						System.err.println("Closed");
+					}
+
+					@Override
+					public void onCloseFrame(WebSocket socket, int statusCode, String reasonText) {
+						// TODO Auto-generated method stub
+						
 					}
 				});
 		((WebSocketImpl) socket).setOrigin("java");

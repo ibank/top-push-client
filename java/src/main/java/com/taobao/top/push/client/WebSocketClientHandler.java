@@ -31,7 +31,6 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 	public void onOpen(WebSocket socket) {
 		this.logger.info("websocket open");
-		this.client.setSocket(socket);
 	}
 
 	public void onError(WebSocket socket, WebSocketException e) {
@@ -41,12 +40,24 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 		if (this.client.getStateHandler() != null)
 			this.client.getStateHandler().exceptionCaught(e);
+
+		this.notifyClient();
 	}
 
 	public void onClose(WebSocket socket) {
 		this.client.stopPing();
 		socket.close();
 		this.logger.warn("websocket closed");
+	}
+
+	@Override
+	public void onCloseFrame(WebSocket socket, int statusCode, String reasonText) {
+		this.client.setFailure(new ClientException(
+				String.format("websocket closed by server: %s|%s", statusCode, reasonText)));
+		this.logger.warn("receive close frame: %s|%s", statusCode, reasonText);
+
+		if (this.client.getStateHandler() != null)
+			this.client.getStateHandler().onClose(statusCode, reasonText);
 	}
 
 	public void onMessage(WebSocket socket, Frame frame) {
@@ -66,11 +77,9 @@ public class WebSocketClientHandler implements WebSocketHandler {
 				int mqttMessageType = MqttMessageIO
 						.parseMessageType(buffer.get(0));
 				if (mqttMessageType == MqttMessageType.ConnectAck) {
-					// TODO:deal with CONNACK
 					return;
 				} else if (mqttMessageType != MqttMessageType.Publish) {
-					System.err.println("Not Implement MqttMessageType:"
-							+ mqttMessageType);
+					System.err.println("Not Implement MqttMessageType:" + mqttMessageType);
 					return;
 				}
 				MqttPublishMessage message = new MqttPublishMessage();
@@ -95,6 +104,12 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 		} else if (frame instanceof TextFrame) {
 			this.logger.info("text message: %s", frame);
+		}
+	}
+
+	private void notifyClient() {
+		synchronized (this.client) {
+			this.client.notify();
 		}
 	}
 }
