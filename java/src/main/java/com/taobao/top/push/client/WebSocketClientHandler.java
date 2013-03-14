@@ -32,14 +32,15 @@ public class WebSocketClientHandler implements WebSocketHandler {
 	public void onOpen(WebSocket socket) {
 		this.logger.info("websocket open");
 		this.client.setSocket(socket);
-		this.notifyClient();
 	}
 
 	public void onError(WebSocket socket, WebSocketException e) {
 		this.client.stopPing();
 		this.client.setFailure(e);
 		this.logger.error("websocket error", e);
-		this.notifyClient();
+
+		if (this.client.getStateHandler() != null)
+			this.client.getStateHandler().exceptionCaught(e);
 	}
 
 	public void onClose(WebSocket socket) {
@@ -94,12 +95,6 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 		} else if (frame instanceof TextFrame) {
 			this.logger.info("text message: %s", frame);
-		}
-	}
-
-	private void notifyClient() {
-		synchronized (this.client) {
-			this.client.notify();
 		}
 	}
 }

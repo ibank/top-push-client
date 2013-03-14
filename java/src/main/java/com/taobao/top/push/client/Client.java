@@ -33,8 +33,10 @@ public class Client {
 	private String protocol;
 	private String self;
 	private HashMap<String, String> headers;
-	private MessageHandler messageHandler;
 	private WebSocket socket;
+	private MessageHandler messageHandler;
+	private StateHandler stateHandler;
+	
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
 
 	private boolean pingFlag;
@@ -64,6 +66,10 @@ public class Client {
 	protected MessageHandler getMessageHandler() {
 		return this.messageHandler;
 	}
+	
+	protected StateHandler getStateHandler() {
+		return this.stateHandler;
+	}
 
 	protected void setSocket(WebSocket socket) {
 		this.socket = socket;
@@ -83,6 +89,10 @@ public class Client {
 
 	public void setMessageHandler(MessageHandler handler) {
 		this.messageHandler = handler;
+	}
+	
+	public void setStateHandler() {
+		
 	}
 
 	public Client connect(String uri) throws ClientException {
