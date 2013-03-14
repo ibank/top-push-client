@@ -1,6 +1,5 @@
 package com.taobao.top.push.client;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.HashMap;
@@ -8,32 +7,33 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.taobao.top.push.DefaultLoggerFactory;
+import com.taobao.top.push.Logger;
+import com.taobao.top.push.LoggerFactory;
 import com.taobao.top.push.messages.MessageIO;
 import com.taobao.top.push.mqtt.MqttMessageIO;
-import com.taobao.top.push.mqtt.MqttMessageType;
 import com.taobao.top.push.mqtt.publish.MqttPublishMessage;
 
 import jp.a840.websocket.WebSocket;
 import jp.a840.websocket.WebSockets;
 import jp.a840.websocket.exception.WebSocketException;
-import jp.a840.websocket.frame.Frame;
-import jp.a840.websocket.frame.rfc6455.BinaryFrame;
 import jp.a840.websocket.frame.rfc6455.FrameRfc6455;
 import jp.a840.websocket.frame.rfc6455.PingFrame;
-import jp.a840.websocket.frame.rfc6455.TextFrame;
-import jp.a840.websocket.handler.WebSocketHandler;
 import jp.a840.websocket.impl.WebSocketImpl;
 
 public class Client {
 	private final static String MQTT = "mqtt";
 	private int maxMessageSize = 1024;
+	// heartbeat ping idle
 	private int maxIdle = 60000;
+	private LoggerFactory loggerFactory;
+	private Logger logger;
 
 	private String uri;
 	private String protocol;
 	private String self;
 	private HashMap<String, String> headers;
-	private MessageHandler handler;
+	private MessageHandler messageHandler;
 	private WebSocket socket;
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
 
@@ -41,17 +41,36 @@ public class Client {
 	private Timer pingTimer;
 	private TimerTask pingTimerTask;
 
-	private WebSocketException exception;
+	private Exception failure;
 	private int reconnectInterval = 5000;
 	private int reconnectCount;
 	private Timer reconnecTimer;
 	private TimerTask reconnecTimerTask;
 
 	public Client(String clientFlag) {
+		this(new DefaultLoggerFactory(), clientFlag);
+	}
+
+	public Client(LoggerFactory loggerFactory, String clientFlag) {
+		this.loggerFactory = loggerFactory;
+		this.logger = this.loggerFactory.create(this);
+
 		this.self = clientFlag;
 		this.bufferQueue = new ConcurrentLinkedQueue<byte[]>();
 		// necessary?
 		this.doReconnect();
+	}
+
+	protected MessageHandler getMessageHandler() {
+		return this.messageHandler;
+	}
+
+	protected void setSocket(WebSocket socket) {
+		this.socket = socket;
+	}
+
+	protected void setFailure(Exception failure) {
+		this.failure = failure;
 	}
 
 	public void setMaxIdle(int maxIdle) {
@@ -63,128 +82,64 @@ public class Client {
 	}
 
 	public void setMessageHandler(MessageHandler handler) {
-		this.handler = handler;
+		this.messageHandler = handler;
 	}
 
-	public Client connect(String uri) throws WebSocketException, IOException,
-			InterruptedException {
+	public Client connect(String uri) throws ClientException {
 		return this.connect(uri, "", null);
 	}
 
-	public Client connect(String uri, HashMap<String, String> headers) throws WebSocketException, IOException,
-			InterruptedException {
+	public Client connect(String uri, HashMap<String, String> headers) throws ClientException {
 		return this.connect(uri, "", headers);
 	}
 
-	public Client connect(String uri, String messageProtocol) throws WebSocketException, IOException,
-			InterruptedException {
+	public Client connect(String uri, String messageProtocol) throws ClientException {
 		return this.connect(uri, messageProtocol, null);
 	}
 
-	public Client connect(String uri, String messageProtocol, HashMap<String, String> headers)
-			throws WebSocketException, IOException, InterruptedException {
+	public Client connect(String uri, String messageProtocol, HashMap<String, String> headers) throws ClientException {
+		this.stopPing();
+		this.failure = null;
 		this.uri = uri;
-		// message protocol to cover top-push protocol
 		this.protocol = messageProtocol;
 		this.headers = headers;
-		final Client base = this;
 
-		WebSocket startSocket = WebSockets.create(uri, new WebSocketHandler() {
-			public void onOpen(WebSocket socket) {
-				base.socket = socket;
-				// TODO:after open, send CONNECT if mqtt
-				synchronized (base) {
-					base.notify();
+		WebSocket startSocket = null;
+		try {
+			startSocket = WebSockets.create(uri,
+					new WebSocketClientHandler(this.loggerFactory, this, this.protocol),
+					this.protocol);
+			((WebSocketImpl) startSocket).setOrigin(this.self);
+			if (this.headers != null) {
+				for (String h : this.headers.keySet()) {
+					((WebSocketImpl) startSocket).getRequestHeader().addHeader(h, this.headers.get(h));
 				}
 			}
-
-			public void onMessage(WebSocket socket, Frame frame) {
-				delayNextPing();
-
-				if (frame instanceof BinaryFrame) {
-					if (handler == null)
-						return;
-
-					ByteBuffer buffer = frame.getContents();
-					String messageFrom;
-					int messageType = 0;
-					int messageBodyFormat = 0;
-					int remainingLength = 0;
-
-					if (MQTT.equalsIgnoreCase(protocol)) {
-						int mqttMessageType = MqttMessageIO
-								.parseMessageType(buffer.get(0));
-						if (mqttMessageType == MqttMessageType.ConnectAck) {
-							// TODO:deal with CONNACK
-							return;
-						} else if (mqttMessageType != MqttMessageType.Publish) {
-							System.err.println("Not Implement MqttMessageType:"
-									+ mqttMessageType);
-							return;
-						}
-						MqttPublishMessage message = new MqttPublishMessage();
-						MqttMessageIO.parseClientReceiving(message, buffer);
-						messageType = message.messageType;
-						messageFrom = message.from;
-						messageBodyFormat = message.bodyFormat;
-						remainingLength = message.remainingLength;
-					} else {
-						messageType = MessageIO.readMessageType(buffer);
-						messageFrom = MessageIO.readClientId(buffer);
-						messageBodyFormat = MessageIO.readBodyFormat(buffer);
-						remainingLength = MessageIO.readRemainingLength(buffer);
-					}
-
-					MessageContext context = new MessageContext(base,
-							messageFrom);
-					handler.onMessage(messageType, messageBodyFormat,
-							buffer.array(),
-							buffer.arrayOffset() + buffer.position(),
-							remainingLength, context);
-
-				} else if (frame instanceof TextFrame) {
-					System.out.println(String.format("text message:%s", frame));
-				}
-			}
-
-			public void onError(WebSocket socket, WebSocketException e) {
-				stopPing();
-				base.exception = e;
-				e.printStackTrace();
-			}
-
-			public void onClose(WebSocket socket) {
-				stopPing();
-				socket.close();
-				System.err.println("Closed");
-			}
-		}, this.protocol);
-
-		((WebSocketImpl) startSocket).setOrigin(this.self);
-
-		if (this.headers != null) {
-			for (String h : this.headers.keySet()) {
-				((WebSocketImpl) startSocket).getRequestHeader().addHeader(h, this.headers.get(h));
-			}
-		}
-		startSocket.setBlockingMode(false);
-		startSocket.connect();
-
-		synchronized (base) {
-			base.wait(2000);
+			startSocket.setBlockingMode(false);
+			startSocket.connect();
+		} catch (Exception e) {
+			throw new ClientException("error while connecting", e);
 		}
 
-		if (!startSocket.isConnected())
-			throw this.exception;
+		// startSocket.connect(); is sync
+		// https://github.com/wsky/top-push-client/issues/20
+		if (this.failure != null)
+			throw new ClientException("connect fail", this.failure);
+		// if (!startSocket.isConnected())
+		// throw new ClientException(String.format("connect timeout in %sms",
+		// 5000));
+
 		this.socket = startSocket;
 		this.reconnectCount++;
+
 		this.doPing();
-		System.out.println(String.format("connected to server %s", uri));
+		this.logger.info("connected to server %s", uri);
+
 		return this;
 	}
 
 	public void sendMessage(String to, int messageType, int messageBodyFormat,
-			byte[] messageBody, int offset, int length) {
+			byte[] messageBody, int offset, int length) throws ClientException {
 		byte[] back = this.getBuffer();
 		ByteBuffer buffer = ByteBuffer.wrap(back);
 
@@ -214,7 +169,7 @@ public class Client {
 			frame.mask();
 			this.socket.send(frame);
 		} catch (WebSocketException e) {
-			e.printStackTrace();
+			throw new ClientException("error while sending", e);
 		} finally {
 			this.returnBuffer(back);
 		}
@@ -222,18 +177,18 @@ public class Client {
 		this.delayNextPing();
 	}
 
-	private void stopPing() {
+	protected void stopPing() {
 		if (this.pingTimer != null) {
 			this.pingTimer.cancel();
 			this.pingTimer = null;
 		}
 	}
 
-	private void delayNextPing() {
+	protected void delayNextPing() {
 		pingFlag = true;
 	}
 
-	private void doPing() {
+	protected void doPing() {
 		this.stopPing();
 		this.pingTimerTask = new TimerTask() {
 			public void run() {
@@ -248,14 +203,15 @@ public class Client {
 		this.pingTimer.schedule(this.pingTimerTask, begin, maxIdle);
 	}
 
-	private void ping() {
+	protected void ping() {
 		if (this.socket == null || !this.socket.isConnected())
 			return;
 		try {
 			PingFrame pingFrame = new PingFrame();
 			pingFrame.mask();
 			this.socket.send(pingFrame);
-			System.out.println("ping#" + this.reconnectCount);
+			if (this.logger.isDebugEnable())
+				this.logger.debug("ping#" + this.reconnectCount);
 		} catch (WebSocketException e) {
 			e.printStackTrace();
 		}
@@ -268,19 +224,15 @@ public class Client {
 				if (socket != null && !socket.isConnected()) {
 					try {
 						connect(uri, protocol, headers);
-					} catch (WebSocketException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+					} catch (ClientException e) {
+						logger.error("error while reconnecting", e);
 					}
 				}
 			}
 		};
 		this.reconnecTimer = new Timer(true);
-		this.reconnecTimer.schedule(this.reconnecTimerTask, new Date(),
-				this.reconnectInterval);
+		this.reconnecTimer.schedule(
+				this.reconnecTimerTask, new Date(), this.reconnectInterval);
 	}
 
 	// easy buffer pool
