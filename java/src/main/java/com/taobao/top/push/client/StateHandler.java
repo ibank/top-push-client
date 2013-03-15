@@ -1,6 +1,6 @@
 package com.taobao.top.push.client;
 
 public interface StateHandler {
-	public void exceptionCaught(Exception exception);
+	public void onError(Exception exception);
 	public void onClose(int statusCode, String reasonText);
 }

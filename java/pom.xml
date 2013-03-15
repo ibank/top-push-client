@@ -27,6 +27,25 @@
       <version>1.1.26</version>
 	  <scope>test</scope>
     </dependency>
+    <!--websocket-client test-->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>1.8.5</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>1.4.9</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>1.4.9</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -41,7 +60,17 @@
             <configuration>
               <sources>
                 <source>external/websocket-client/src/main/java</source>
-				<source>external/top-push/src/main/protocol</source>
+				        <source>external/top-push/src/main/protocol</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-resource</id>
+            <phase>generate-sources</phase>
+            <goals><goal>add-test-source</goal></goals>
+            <configuration>
+              <sources>
+                <source>external/websocket-client/src/test/java</source>
               </sources>
             </configuration>
           </execution>

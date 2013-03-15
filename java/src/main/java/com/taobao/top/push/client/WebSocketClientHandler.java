@@ -39,7 +39,7 @@ public class WebSocketClientHandler implements WebSocketHandler {
 		this.logger.error("websocket error", e);
 
 		if (this.client.getStateHandler() != null)
-			this.client.getStateHandler().exceptionCaught(e);
+			this.client.getStateHandler().onError(e);
 	}
 
 	public void onClose(WebSocket socket) {

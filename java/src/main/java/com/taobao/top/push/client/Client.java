@@ -26,6 +26,8 @@ public class Client {
 	private int maxMessageSize = 1024;
 	// heartbeat ping idle
 	private int maxIdle = 60000;
+	private int connectTimeoutSecond = 5;
+
 	private LoggerFactory loggerFactory;
 	private Logger logger;
 
@@ -44,7 +46,7 @@ public class Client {
 	private TimerTask pingTimerTask;
 
 	private Exception failure;
-	private int reconnectInterval = 5000;
+	private int reconnectInterval = 10000;
 	private int reconnectCount;
 	private Timer reconnecTimer;
 	private TimerTask reconnecTimerTask;
@@ -79,6 +81,10 @@ public class Client {
 		this.maxIdle = maxIdle;
 	}
 
+	public void setConnectTimeout(int connectTimeoutSecond) {
+		this.connectTimeoutSecond = connectTimeoutSecond;
+	}
+
 	public void setMaxMessageSize(int maxMessageSize) {
 		this.maxMessageSize = maxMessageSize;
 	}
@@ -87,8 +93,19 @@ public class Client {
 		this.messageHandler = handler;
 	}
 
-	public void setStateHandler() {
+	public void setStateHandler(StateHandler stateHandler) {
+		this.stateHandler = stateHandler;
+	}
 
+	public void enableReconnect(int reconnectInterval) {
+		this.reconnectInterval = reconnectInterval;
+		this.doReconnect();
+	}
+
+	public void close() {
+		this.stopPing();
+		this.stopReconnect();
+		this.socket.close();
 	}
 
 	public Client connect(String uri) throws ClientException {
@@ -122,13 +139,14 @@ public class Client {
 				}
 			}
 			startSocket.setBlockingMode(false);
+			startSocket.setConnectionTimeout(this.connectTimeoutSecond);
 			// startSocket.connect(); is sync
 			// https://github.com/wsky/top-push-client/issues/20
 			startSocket.connect();
 		} catch (Exception e) {
 			throw new ClientException("error while connecting", e);
 		}
-		
+
 		if (this.failure != null)
 			throw new ClientException("connect fail", this.failure);
 
@@ -141,7 +159,7 @@ public class Client {
 		return this;
 	}
 
-	public void sendMessage(String to, int messageType, 
+	public void sendMessage(String to, int messageType,
 			int messageBodyFormat, byte[] messageBody, int offset, int length) throws ClientException {
 		byte[] back = this.getBuffer();
 		ByteBuffer buffer = ByteBuffer.wrap(back);
@@ -220,7 +238,13 @@ public class Client {
 		}
 	}
 
+	private void stopReconnect() {
+		if (this.reconnecTimer != null)
+			this.reconnecTimer.cancel();
+	}
+
 	private void doReconnect() {
+		this.stopPing();
 		this.reconnecTimerTask = new TimerTask() {
 			@Override
 			public void run() {

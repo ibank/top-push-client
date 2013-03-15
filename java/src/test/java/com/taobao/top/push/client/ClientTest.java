@@ -2,23 +2,176 @@ package com.taobao.top.push.client;
 
 import static org.junit.Assert.*;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 
+import jp.a840.websocket.MockServer;
+import jp.a840.websocket.frame.draft06.PingFrame;
+import jp.a840.websocket.frame.rfc6455.CloseFrame;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.alibaba.fastjson.JSON;
 import com.taobao.top.push.messages.MessageType;
 
 public class ClientTest {
+
+	private MockServer ms;
+	private String uri = "ws://localhost:9999/frontend";
+
+	@Before
+	public void startMockServer() {
+		ms = new MockServer(9999, 13);
+	}
+
+	@After
+	public void stopMockServer() throws Exception {
+		ms.join(5000);
+		Assert.assertFalse(ms.isAlive());
+	}
+
 	@Test
 	public void connect_test() throws ClientException {
+		emptyRequestMock();
+		handshakeMock();
+		emptyRequestMock();
+		ms.start();
+
 		Client client = new Client("java");
-		client.setMaxIdle(100);
+		client.connect(uri);
+		client.close();
+	}
+
+	@Test
+	public void header_test() throws ClientException {
+		ms.addRequest(new MockServer.VerifyRequest() {
+			public void verify(ByteBuffer request) {
+				// assert httpheader
+			}
+		});
+		handshakeMock();
+		emptyRequestMock();
+		ms.start();
+
+		Client client = new Client("java");
 		HashMap<String, String> headers = new HashMap<String, String>();
 		headers.put("appkey", "javatest");
-		client.connect("ws://localhost:8080/frontend", "", headers);
-		//client.connect("ws://localhost:8080/frontend", "", headers);
+		client.connect(uri, "", headers);
+		client.close();
+	}
+
+	@Test
+	public void ping_test() throws ClientException, InterruptedException {
+		emptyRequestMock();
+		handshakeMock();
+		ms.addRequest(new MockServer.VerifyRequest() {
+			public void verify(ByteBuffer request) {
+				Assert.assertEquals(new PingFrame().toByteBuffer().slice(), request.slice());
+			}
+		});
+		ms.start();
+
+		Client client = new Client("java");
+		client.setMaxIdle(500);
+		client.connect(uri);
+		Thread.sleep(1000);
+		client.close();
+	}
+
+	@Test(expected = ClientException.class)
+	public void connect_fail_error_uri_test() throws ClientException {
+		Client client = new Client("java");
+		try {
+			client.connect("ws://localhost:8889/frontend");
+		} catch (ClientException e) {
+			e.printStackTrace();
+			assertEquals("connect fail", e.getMessage());
+			throw e;
+		}
+	}
+
+	@Test(expected = ClientException.class)
+	public void connect_refused_test() throws ClientException {
+		emptyRequestMock();
+		ms.addResponse(toByteBuffer("HTTP/1.1 401 Not Auth\r\n"));
+		ms.start();
+
+		Client client = new Client(null);
+		try {
+			client.connect(uri);
+		} catch (ClientException e) {
+			e.printStackTrace();
+			assertEquals("connect fail", e.getMessage());
+			throw e;
+		}
+	}
+
+	// @Test(expected = ClientException.class)
+	public void connect_timeout_test() throws ClientException {
+		ms.addRequest(new MockServer.VerifyRequest() {
+			public void verify(ByteBuffer request) {
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+				}
+			}
+		});
+		ms.start();
+
+		Client client = new Client(null);
+		// not well support timeout for websocket handshake, just tcp connect
+		// timeout
+		client.setConnectTimeout(2);
+		try {
+			client.connect(uri);
+		} catch (ClientException e) {
+			e.printStackTrace();
+			assertEquals("connect fail", e.getMessage());
+			throw e;
+		}
+	}
+
+	@Test
+	public void reconnect_test() throws Exception {
+		final Object obj = new Object();
+		emptyRequestMock();
+		handshakeMock();
+		ms.addResponse(new CloseFrame().toByteBuffer());
+		ms.addRequest(new MockServer.VerifyRequest() {
+			public void verify(ByteBuffer request) {
+				System.out.println("reconnect");
+				synchronized (obj) {
+					obj.notify();
+				}
+			}
+		});
+		ms.start();
+
+		final Client client = new Client("java");
+		client.enableReconnect(500);
+		client.connect(uri);
+
+		// restart server
+		// stopMockServer();
+		// startMockServer();
+		//
+		// ms.addRequest(new MockServer.VerifyRequest() {
+		// public void verify(ByteBuffer request) {
+		// synchronized (client) {
+		// client.notify();
+		// }
+		// }
+		// });
+		// handshakeMock();
+		// ms.start();
+
+		synchronized (obj) {
+			obj.wait();
+		}
 	}
 
 	@Test
@@ -29,42 +182,6 @@ public class ClientTest {
 	@Test
 	public void pub_confirm_mqtt_test() throws ClientException, InterruptedException {
 		pub_confirm_test("java2", "mqtt", 100);
-	}
-
-	@Test(expected = ClientException.class)
-	public void connect_fail_test() throws ClientException {
-		Client client = new Client("java");
-		try {
-			client.connect("ws://localhost:8889/frontend");
-		} catch (ClientException e) {
-			e.printStackTrace();
-			assertEquals("connect fail", e.getMessage());
-			throw e;
-		}
-	}
-	
-	@Test(expected = ClientException.class)
-	public void connect_fail_unauth_test() throws ClientException {
-		Client client = new Client(null);
-		try {
-			client.connect("ws://localhost:8080/frontend");
-		} catch (ClientException e) {
-			e.printStackTrace();
-			assertEquals("connect fail", e.getMessage());
-			throw e;
-		}
-	}
-
-	@Test
-	public void connect_timeout_test() {
-
-	}
-
-	@Test
-	public void reconnect_test() throws ClientException, InterruptedException {
-		Client client = new Client("java");
-		client.connect("ws://localhost:8080/frontend");
-		Thread.sleep(3000);
 	}
 
 	private static int count;
@@ -133,5 +250,25 @@ public class ClientTest {
 		synchronized (flag) {
 			flag.wait();
 		}
+	}
+
+	private void emptyRequestMock() {
+		ms.addRequest(new MockServer.VerifyRequest() {
+			public void verify(ByteBuffer request) {
+			}
+		});
+	}
+
+	private void handshakeMock() {
+		ms.addResponse(toByteBuffer(
+				"HTTP/1.1 101 Switching Protocols\r\n" +
+						"Upgrade: websocket\r\n" +
+						"Connection: Upgrade\r\n" +
+						"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n" +
+						"Sec-WebSocket-Protocol: \r\n\r\n"));
+	}
+
+	private ByteBuffer toByteBuffer(String str) {
+		return ByteBuffer.wrap(str.getBytes());
 	}
 }
