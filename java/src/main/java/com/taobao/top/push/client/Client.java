@@ -141,8 +141,8 @@ public class Client {
 		return this;
 	}
 
-	public void sendMessage(String to, int messageType, int messageBodyFormat,
-			byte[] messageBody, int offset, int length) throws ClientException {
+	public void sendMessage(String to, int messageType, 
+			int messageBodyFormat, byte[] messageBody, int offset, int length) throws ClientException {
 		byte[] back = this.getBuffer();
 		ByteBuffer buffer = ByteBuffer.wrap(back);
 

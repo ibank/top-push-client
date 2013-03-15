@@ -40,8 +40,6 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 		if (this.client.getStateHandler() != null)
 			this.client.getStateHandler().exceptionCaught(e);
-
-		this.notifyClient();
 	}
 
 	public void onClose(WebSocket socket) {
@@ -79,7 +77,7 @@ public class WebSocketClientHandler implements WebSocketHandler {
 				if (mqttMessageType == MqttMessageType.ConnectAck) {
 					return;
 				} else if (mqttMessageType != MqttMessageType.Publish) {
-					System.err.println("Not Implement MqttMessageType:" + mqttMessageType);
+					this.logger.warn("Not Implement MqttMessageType:" + mqttMessageType);
 					return;
 				}
 				MqttPublishMessage message = new MqttPublishMessage();
@@ -104,12 +102,6 @@ public class WebSocketClientHandler implements WebSocketHandler {
 
 		} else if (frame instanceof TextFrame) {
 			this.logger.info("text message: %s", frame);
-		}
-	}
-
-	private void notifyClient() {
-		synchronized (this.client) {
-			this.client.notify();
 		}
 	}
 }
