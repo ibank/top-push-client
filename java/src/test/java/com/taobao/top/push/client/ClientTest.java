@@ -42,6 +42,18 @@ public class ClientTest {
 			throw e;
 		}
 	}
+	
+	@Test(expected = ClientException.class)
+	public void connect_fail_unauth_test() throws ClientException {
+		Client client = new Client(null);
+		try {
+			client.connect("ws://localhost:8080/frontend");
+		} catch (ClientException e) {
+			e.printStackTrace();
+			assertEquals("connect fail", e.getMessage());
+			throw e;
+		}
+	}
 
 	@Test
 	public void connect_timeout_test() {
