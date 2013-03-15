@@ -93,15 +93,57 @@ public class WebSocketClientHandler implements WebSocketHandler {
 				remainingLength = MessageIO.readRemainingLength(buffer);
 			}
 
-			this.client.getMessageHandler().onMessage(messageType,
-					messageBodyFormat,
-					buffer.array(),
+			this.client.getExecutorService().execute(new OnMessage(
+					this.client, 
+					messageType, 
+					messageBodyFormat, 
+					buffer.array(), 
 					buffer.arrayOffset() + buffer.position(),
 					remainingLength,
-					new MessageContext(this.loggerFactory, this.client, messageFrom));
-
+					new MessageContext(
+							this.loggerFactory, 
+							this.client, 
+							messageFrom)));
 		} else if (frame instanceof TextFrame) {
 			this.logger.info("text message: %s", frame);
 		}
+	}
+
+	public class OnMessage implements Runnable {
+		private Client client;
+		private int messageType;
+		private int messageBodyFormat;
+		private byte[] buffer;
+		private int offset;
+		private int length;
+		private MessageContext context;
+
+		public OnMessage(Client client,
+				int messageType,
+				int messageBodyFormat,
+				byte[] buffer,
+				int offset,
+				int length,
+				MessageContext context) {
+			this.client = client;
+			this.messageType = messageType;
+			this.messageBodyFormat = messageBodyFormat;
+			this.buffer = buffer;
+			this.offset = offset;
+			this.length = length;
+			this.context = context;
+		}
+
+		@Override
+		public void run() {
+			this.client.getMessageHandler().onMessage(
+					messageType,
+					messageBodyFormat,
+					buffer,
+					offset,
+					length,
+					context);
+		}
+
 	}
 }

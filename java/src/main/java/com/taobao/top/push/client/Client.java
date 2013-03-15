@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.taobao.top.push.DefaultLoggerFactory;
 import com.taobao.top.push.Logger;
@@ -38,6 +40,7 @@ public class Client {
 	private WebSocket socket;
 	private MessageHandler messageHandler;
 	private StateHandler stateHandler;
+	private ExecutorService executorService;
 
 	private ConcurrentLinkedQueue<byte[]> bufferQueue;
 
@@ -61,6 +64,8 @@ public class Client {
 
 		this.self = clientFlag;
 		this.bufferQueue = new ConcurrentLinkedQueue<byte[]>();
+		
+		this.setThreadPool(Executors.newCachedThreadPool());
 		// necessary?
 		this.doReconnect();
 	}
@@ -71,6 +76,10 @@ public class Client {
 
 	protected StateHandler getStateHandler() {
 		return this.stateHandler;
+	}
+
+	protected ExecutorService getExecutorService() {
+		return this.executorService;
 	}
 
 	protected void setFailure(Exception failure) {
@@ -95,6 +104,10 @@ public class Client {
 
 	public void setStateHandler(StateHandler stateHandler) {
 		this.stateHandler = stateHandler;
+	}
+
+	public void setThreadPool(ExecutorService executorService) {
+		this.executorService = executorService;
 	}
 
 	public void enableReconnect(int reconnectInterval) {
