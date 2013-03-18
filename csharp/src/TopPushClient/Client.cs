@@ -15,6 +15,7 @@ namespace TopPushClient
         private static readonly string MQTT = "mqtt";
         private int _maxMessageSize = 1024;
         private int _maxIdle = 60000;
+        private int _maxTimeout = 5000;
 
         private string _uri;
         private string _protocol;
@@ -63,43 +64,47 @@ namespace TopPushClient
         }
         public void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
         {
+            var locker = new object();
+            var error = string.Empty;
             this._uri = uri;
-            this._protocol = messageProtocol;//message protocol to cover top-push protocol
+            this._protocol = messageProtocol;
             this._headers = headers;
             this._socket = new WebSocket(this._uri, this._protocol);
-            this._socket.OnOpen += (s, e) => { this._reconnectCount++; Console.WriteLine("connected to server {0}", this._uri); };
-            this._socket.OnClose += (s, e) => { this.StopPing(); Console.WriteLine("Closed: {0}|{1}", e.Code, e.Reason); };
-            this._socket.OnError += (s, e) => { this.StopPing(); Console.WriteLine("Error: {0}", e.Message); };
-            this._socket.OnMessage += (s, e) =>
+            this.PrepareSocket(this._socket, locker);
+            this._socket.OnError += (s, e) =>
             {
-                this.DelayNextPing();
-
-                using (var stream = new MemoryStream(e.RawData))
-                {
-                    if (MQTT.Equals(this._protocol, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        var msg = MqttMessage.CreateFrom(stream);
-
-                        if (!(msg is MqttPublishMessage))
-                            return;
-
-                        using (var payload = new MemoryStream())
-                        {
-                            (msg as MqttPublishMessage).Payload.WriteTo(payload);
-                            payload.Seek(0, SeekOrigin.Begin);
-                            this.OnMessage(payload);
-                        }
-
-                        return;
-                    }
-
-                    this.OnMessage(stream);
-                }
+                this.StopPing();
+                error = e.Message;
+                Console.WriteLine("Error: {0}", e.Message);
+                System.Threading.Monitor.Pulse(locker);
             };
+
             this._socket.Origin = this._self;
             this._socket.ExtraHeaders = this._headers;
+            //connect -> handshake -> validate respone
             this._socket.Connect();
+            // connect maybe fast enough
+            if (this._socket.ReadyState == WsState.OPEN)
+            {
+                this.DoPing();
+                return;
+            }
+
+            var timeout = !System.Threading.Monitor.Wait(locker, this._maxTimeout);
+            if (string.IsNullOrEmpty(error))
+                throw new Exception("Connect Error: " + error);
+            if (this._socket.ReadyState != WsState.OPEN && timeout)
+                throw new Exception("Connect Timeout");
+
             this.DoPing();
+        }
+
+        public void Close()
+        {
+            this.StopPing();
+            this.StopReconnect();
+            if (this._socket != null)
+                this._socket.Close(WebSocketSharp.Frame.CloseStatusCode.NORMAL);
         }
 
         public void SendMessage(string to
@@ -138,6 +143,45 @@ namespace TopPushClient
             }
         }
 
+        private void PrepareSocket(WebSocket socket, object locker)
+        {
+            socket.OnOpen += (s, e) =>
+            {
+                this._reconnectCount++;
+                Console.WriteLine("connected to server {0}", this._uri);
+                System.Threading.Monitor.Pulse(locker);
+            };
+            socket.OnClose += (s, e) =>
+            {
+                this.StopPing();
+                Console.WriteLine("Closed: {0}|{1}", e.Code, e.Reason);
+            };
+            socket.OnMessage += (s, e) =>
+            {
+                this.DelayNextPing();
+
+                using (var stream = new MemoryStream(e.RawData))
+                {
+                    if (MQTT.Equals(this._protocol, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        var msg = MqttMessage.CreateFrom(stream);
+
+                        if (!(msg is MqttPublishMessage))
+                            return;
+
+                        using (var payload = new MemoryStream())
+                        {
+                            (msg as MqttPublishMessage).Payload.WriteTo(payload);
+                            payload.Seek(0, SeekOrigin.Begin);
+                            this.OnMessage(payload);
+                        }
+
+                        return;
+                    }
+                    this.OnMessage(stream);
+                }
+            };
+        }
         private void OnMessage(Stream stream)
         {
             using (var reader = new BinaryReader(stream))
@@ -195,8 +239,14 @@ namespace TopPushClient
                 this.Ping();
             this._pingFlag = false;
         }
+        private void StopReconnect()
+        {
+            if (this._reconnecTimer != null)
+                this._reconnecTimer.Stop();
+        }
         private void DoReconnect()
         {
+            this.StopReconnect();
             this._reconnecTimer = new Timer(this._reconnectInterval);
             this._reconnecTimer.Elapsed += reconnecTimer_Elapsed;
             this._reconnecTimer.Start();
