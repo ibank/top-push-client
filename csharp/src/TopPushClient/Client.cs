@@ -41,6 +41,10 @@ namespace TopPushClient
         {
             this._maxIdle = maxIdle;
         }
+        public void SetConnectTimeout(int connectTimeoutMillisecond)
+        {
+            this._maxTimeout = connectTimeoutMillisecond;
+        }
         public void SetMaxMessageSize(int maxMessageSize)
         {
             this._maxMessageSize = maxMessageSize;
