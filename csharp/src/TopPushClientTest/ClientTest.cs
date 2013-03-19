@@ -129,7 +129,7 @@ namespace TopPushClientTest
 
         private class TestMessageHandler : MessageHandler
         {
-            public override void onMessage(int messageType,
+            public override void OnMessage(int messageType,
                 int bodyFormat,
                 byte[] messageBody,
                 int offset,
@@ -137,7 +137,7 @@ namespace TopPushClientTest
                 MessageContext context)
             {
                 Console.WriteLine("-------onMessage");
-                context.reply(messageType, bodyFormat, messageBody, offset, length);
+                context.Reply(messageType, bodyFormat, messageBody, offset, length);
             }
         }
 

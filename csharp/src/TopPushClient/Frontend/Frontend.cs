@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace TopPushClient
@@ -10,30 +11,34 @@ namespace TopPushClient
     public class Frontend
     {
         private static readonly String PROTOCOL = "mqtt";
-        private Client _client;
-        private PublishMessageHandler _handler;
-
-        private string _appKey;
-        private int _userId = -1;
-        private int _groupId = 1;
+        private CustomClient _client;
+        private FrontendMessageHandler _handler;
 
         public Frontend(string appKey) : this(appKey, -1, 1) { }
         public Frontend(string appKey, int userId) : this(appKey, userId, 1) { }
         public Frontend(string appKey, int userId, int groupId)
         {
-            this._appKey = appKey;
-            this._userId = userId;
-            this._groupId = groupId;
-            this._client = new Client(string.Format("{0}{1}{2}"
-                , this._appKey
-                , this._userId
-                , this._groupId));
+            this._client = new CustomClient(string.Format(
+                "{0}{1}{2}"
+                , appKey
+                , userId
+                , groupId));
+            this._client.AppKey = appKey;
+            this._client.UserId = userId;
+            this._client.GroupId = groupId;
         }
 
+        /// <summary>set app secret for auth
+        /// </summary>
+        /// <param name="secret"></param>
+        public void SetSecret(string secret)
+        {
+            this._client.Secret = secret;
+        }
         /// <summary>Set Message Handler
         /// </summary>
         /// <param name="handler"></param>
-        public void SetPublishMessageHandler(PublishMessageHandler handler)
+        public void SetMessageHandler(FrontendMessageHandler handler)
         {
             this._handler = handler;
             this.SetHandler();
@@ -43,11 +48,7 @@ namespace TopPushClient
         /// <param name="uri">push server address, eg: ws://localhost:8080/frontend</param>
         public void Connect(string uri)
         {
-            var headers = new Dictionary<string, string>();
-            headers.Add("appkey", this._appKey);
-            headers.Add("userId", this._userId.ToString());
-            headers.Add("groupId", this._groupId.ToString());
-            this._client.Connect(uri, PROTOCOL, headers);
+            this._client.Connect(uri, PROTOCOL);
         }
 
         private void SetHandler()
@@ -56,21 +57,18 @@ namespace TopPushClient
         }
         private class CustomMessageHandler : MessageHandler
         {
-            private PublishMessageHandler _handler;
-            public CustomMessageHandler(PublishMessageHandler handler)
+            private FrontendMessageHandler _handler;
+            public CustomMessageHandler(FrontendMessageHandler handler)
             {
                 this._handler = handler;
             }
-            public override void onMessage(int messageType
+            public override void OnMessage(int messageType
                 , int bodyFormat
                 , byte[] messageBody
                 , int offset
                 , int length
                 , MessageContext context)
             {
-                if (messageType != MessageType.PUBLISH)
-                    return;
-
                 using (var stream = new MemoryStream(messageBody, offset, length))
                 using (var reader = new BinaryReader(stream))
                 {
@@ -78,13 +76,60 @@ namespace TopPushClient
                     long messageId = MessageIO.SwapInt64(reader.ReadInt64());
                     offset += 8;
                     length -= 8;
-                    this._handler.onMessage(messageType,
+                    this._handler.OnMessage(messageType,
                             bodyFormat,
                             messageBody,
                             offset,
                             length,
-                            new PublishMessageContext(messageId, context));
+                            new FrontendMessageContext(messageId, context));
                 }
+            }
+        }
+
+        class CustomClient : Client
+        {
+            public string AppKey { get; set; }
+            public int UserId { get; set; }
+            public int GroupId { get; set; }
+
+            public string Secret { get; set; }
+
+            public CustomClient(string clientFlag) : base(clientFlag) { }
+
+            public override void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
+            {
+                headers = new Dictionary<string, string>();
+                headers.Add("timestamp", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                headers.Add("appkey", this.AppKey);
+                headers.Add("userid", this.UserId.ToString());
+                headers.Add("groupid", this.GroupId.ToString());
+                headers.Add("sign", this.signature(headers, this.Secret));
+                base.Connect(uri, messageProtocol, headers);
+            }
+
+            private string signature(IDictionary<string, string> dict, string secret)
+            {
+                var names = new string[dict.Count];
+                dict.Keys.CopyTo(names, 0);
+                Array.Sort(names);
+                StringBuilder sb = new StringBuilder();
+                sb.Append(secret);
+                for (int i = 0; i < names.Length; i++)
+                {
+                    String name = names[i];
+                    sb.Append(name);
+                    sb.Append(dict[name]);
+                }
+                sb.Append(secret);
+                return toMD5(sb.ToString()).ToUpper();
+            }
+            private string toMD5(string originalString)
+            {
+                var bytes = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(originalString));
+                var strb = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                    strb.Append(bytes[i].ToString("X2"));
+                return strb.ToString();
             }
         }
     }

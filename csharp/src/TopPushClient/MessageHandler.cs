@@ -6,7 +6,7 @@ namespace TopPushClient
 {
     public abstract class MessageHandler
     {
-        public abstract void onMessage(int messageType
+        public abstract void OnMessage(int messageType
             , int bodyFormat
             , byte[] messageBody
             , int offset

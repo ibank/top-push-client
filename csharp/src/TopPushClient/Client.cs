@@ -72,7 +72,7 @@ namespace TopPushClient
         {
             this.Connect(uri, string.Empty, null);
         }
-        public void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
+        public virtual void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
         {
             this.StopPing();
             this._uri = uri;
@@ -203,7 +203,7 @@ namespace TopPushClient
                 int remainingLength = MessageIO.ReadRemainingLength(reader);
 
                 MessageContext context = new MessageContext(this, messageFrom);
-                this._handler.onMessage(messageType
+                this._handler.OnMessage(messageType
                     , messageBodyFormat
                     , Ext.ReadBytes(stream, stream.Length)
                     , 0

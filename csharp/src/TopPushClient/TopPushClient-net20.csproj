@@ -38,8 +38,8 @@
     <Compile Include="Client.cs" />
     <Compile Include="Frontend\Frontend.cs" />
     <Compile Include="Frontend\MessageType.cs" />
-    <Compile Include="Frontend\PublishMessageContext.cs" />
-    <Compile Include="Frontend\PublishMessageHandler.cs" />
+    <Compile Include="Frontend\FrontendMessageContext.cs" />
+    <Compile Include="Frontend\FrontendMessageHandler.cs" />
     <Compile Include="generated\nmqtt\ClientIdentifierException.cs" />
     <Compile Include="generated\nmqtt\Constants.cs" />
     <Compile Include="generated\nmqtt\Encoding\MqttEncoding.cs" />

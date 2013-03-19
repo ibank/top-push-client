@@ -4,13 +4,13 @@ using System.Text;
 
 namespace TopPushClient
 {
-    public abstract class PublishMessageHandler
+    public abstract class FrontendMessageHandler
     {
-        public abstract void onMessage(int messageType
+        public abstract void OnMessage(int messageType
             , int bodyFormat
             , byte[] messageBody
             , int offset
             , int length
-            , PublishMessageContext context);
+            , FrontendMessageContext context);
     }
 }

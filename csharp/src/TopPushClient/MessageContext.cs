@@ -15,7 +15,7 @@ namespace TopPushClient
             this.client = client;
         }
 
-        public void reply(int messageType
+        public void Reply(int messageType
             , int bodyFormat
             , byte[] messageBody
             , int offset, int length)
