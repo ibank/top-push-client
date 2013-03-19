@@ -70,7 +70,7 @@ namespace TopPushClient
         }
         public void Connect(string uri, string messageProtocol)
         {
-            this.Connect(uri, string.Empty, null);
+            this.Connect(uri, messageProtocol, null);
         }
         public virtual void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
         {
