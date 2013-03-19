@@ -5,6 +5,7 @@ using System.Text;
 using System.Timers;
 using Nmqtt;
 using WebSocketSharp;
+using thread=System.Threading;
 
 namespace TopPushClient
 {
@@ -45,6 +46,11 @@ namespace TopPushClient
         {
             this._maxTimeout = connectTimeoutMillisecond;
         }
+        public void SetReconnectInterval(int reconnectIntervalMillisecond)
+        {
+            this._reconnectInterval = reconnectIntervalMillisecond;
+            this.DoReconnect();
+        }
         public void SetMaxMessageSize(int maxMessageSize)
         {
             this._maxMessageSize = maxMessageSize;
@@ -68,23 +74,16 @@ namespace TopPushClient
         }
         public void Connect(string uri, string messageProtocol, IDictionary<string, string> headers)
         {
-            var locker = new object();
-            var error = string.Empty;
+            this.StopPing();
             this._uri = uri;
             this._protocol = messageProtocol;
             this._headers = headers;
             this._socket = new WebSocket(this._uri, this._protocol);
-            this.PrepareSocket(this._socket, locker);
-            this._socket.OnError += (s, e) =>
-            {
-                this.StopPing();
-                error = e.Message;
-                Console.WriteLine("Error: {0}", e.Message);
-                System.Threading.Monitor.Pulse(locker);
-            };
-
             this._socket.Origin = this._self;
             this._socket.ExtraHeaders = this._headers;
+
+            var handle = new WaitHandle();
+            this.PrepareSocket(this._socket, handle);
             //connect -> handshake -> validate respone
             this._socket.Connect();
             // connect maybe fast enough
@@ -94,9 +93,10 @@ namespace TopPushClient
                 return;
             }
 
-            var timeout = !System.Threading.Monitor.Wait(locker, this._maxTimeout);
-            if (string.IsNullOrEmpty(error))
-                throw new Exception("Connect Error: " + error);
+            var timeout = !handle.WaitOne(this._maxTimeout);
+            if (!string.IsNullOrEmpty(handle.Error))
+                throw new Exception("Connect Error: " + handle.Error);
+            //timeout wont happen as websocket-sharp connect impl
             if (this._socket.ReadyState != WsState.OPEN && timeout)
                 throw new Exception("Connect Timeout");
 
@@ -147,18 +147,25 @@ namespace TopPushClient
             }
         }
 
-        private void PrepareSocket(WebSocket socket, object locker)
+        private void PrepareSocket(WebSocket socket, WaitHandle handle)
         {
             socket.OnOpen += (s, e) =>
             {
                 this._reconnectCount++;
                 Console.WriteLine("connected to server {0}", this._uri);
-                System.Threading.Monitor.Pulse(locker);
+                handle.Set();
             };
             socket.OnClose += (s, e) =>
             {
                 this.StopPing();
                 Console.WriteLine("Closed: {0}|{1}", e.Code, e.Reason);
+            };
+            this._socket.OnError += (s, e) =>
+            {
+                this.StopPing();
+                handle.Error = e.Message;
+                Console.WriteLine("Error: {0}", e.Message);
+                handle.Set();
             };
             socket.OnMessage += (s, e) =>
             {
@@ -283,6 +290,12 @@ namespace TopPushClient
             for (var i = 0; i < stream.Length; i++)
                 bytes[i] = (byte)stream.ReadByte();
             return bytes;
+        }
+
+        class WaitHandle : thread.EventWaitHandle
+        {
+            public string Error { get; set; }
+            public WaitHandle() : base(false, thread.EventResetMode.AutoReset) { }
         }
     }
 }

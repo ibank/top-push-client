@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using NUnit.Framework;
 using TopPushClient;
+using WebSocketSharp.Frame;
 
 namespace TopPushClientTest
 {
     [TestFixture]
     public class ClientTest
     {
-        private string uri = "ws://localhost:8889/";
+        private string uri = "ws://127.0.0.1:8889/";
         private MockServer ms;
         [SetUp]
         public void StartMock()
@@ -27,8 +30,7 @@ namespace TopPushClientTest
         [Test]
         public void ConnectTest()
         {
-            ms.AddRequestHandle(o => { });
-            ms.AddResponse(null);
+            AddHandshake();
             Client client = new Client("csharp");
             client.Connect(uri);
         }
@@ -38,46 +40,129 @@ namespace TopPushClientTest
         public void ConnectErrorTest()
         {
             Client client = new Client("csharp");
-            client.Connect("ws://localhost:8080/");
+            client.Connect("ws://127.0.0.1:8080/");
         }
+
+        //timeout not support in this client impl
+        //[Test]
+        //[ExpectedException]
+        //public void ConnectTimeoutTest()
+        //{
+        //    ms.AddRequestHandle(o => Thread.Sleep(3000));
+        //    Client client = new Client("csharp");
+        //    client.SetConnectTimeout(1000);
+        //    client.Connect(uri);
+        //}
+
         [Test]
-        [ExpectedException]
-        public void ConnectTimeoutTest()
+        public void PingTest()
         {
-            ms.AddRequestHandle(o => Thread.Sleep(3000));
+            var handle = new EventWaitHandle(false, EventResetMode.AutoReset);
+            AddHandshake();
+            ms.AddRequestHandle(o =>
+            {
+                //got a ping
+                var ping = WsFrame.Parse(o);
+                Assert.AreEqual(Opcode.PING, ping.Opcode);
+                handle.Set();
+            });
             Client client = new Client("csharp");
-            client.SetConnectTimeout(1000);
+            client.SetMaxIdle(500);
             client.Connect(uri);
+            Assert.IsTrue(handle.WaitOne(5000));
         }
-        public void PingTest() { }
-        public void ReconnectTest() { }
-        public void SendReceiveTest() { }
 
-        //TODO:mock server
-        public class MockServer
+        [Test]
+        public void ReconnectTest()
         {
-            private int _port;
-            private Queue<Action<byte[]>> _requestHandles;
-            private Queue<byte[]> _response;
+            AddHandshake();
+            Client client = new Client("csharp");
+            client.SetReconnectInterval(500);
+            client.Connect(uri);
 
-            public MockServer(int port)
-            {
-                this._port = port;
-                this._requestHandles = new Queue<Action<byte[]>>();
-                this._response = new Queue<byte[]>();
-            }
+            StopMock();
+            StartMock();
+            var handle = new EventWaitHandle(false, EventResetMode.AutoReset);
+            AddHandshake(o => handle.Set());
+            Assert.IsTrue(handle.WaitOne(3000));
+        }
 
-            public void AddRequestHandle(Action<byte[]> handle)
+        //send->receive->reply
+        [Test]
+        public void SendReceiveTest()
+        {
+            byte[] data = Encoding.ASCII.GetBytes("hello");
+            var handle = new EventWaitHandle(false, EventResetMode.AutoReset);
+            AddHandshake();
+            ms.AddRequestHandle(o =>
             {
-                this._requestHandles.Enqueue(handle);
-            }
-            public void AddResponse(byte[] data)
-            {
-                this._response.Enqueue(data);
-            }
+                ms.AddResponse(o);
+                ms.AddRequestHandle(p =>
+                {
+                    var frame = WsFrame.Parse(p);
+                    Assert.AreEqual(Opcode.BINARY, frame.Opcode);
+                    handle.Set();
+                });
+            });
 
-            public void Start() { }
-            public void Stop() { }
+            Client client = new Client("csharp");
+            client.SetMessageHandler(new TestMessageHandler());
+            client.Connect(uri);
+            client.SendMessage("to", 1, 1, data, 0, data.Length);
+            Assert.IsTrue(handle.WaitOne(3000));
+        }
+
+        private class TestMessageHandler : MessageHandler
+        {
+            public override void onMessage(int messageType,
+                int bodyFormat,
+                byte[] messageBody,
+                int offset,
+                int length,
+                MessageContext context)
+            {
+                Console.WriteLine("-------onMessage");
+                context.reply(messageType, bodyFormat, messageBody, offset, length);
+            }
+        }
+
+        private void AddHandshake() { this.AddHandshake(null); }
+        private void AddHandshake(Action<byte[]> func)
+        {
+            ms.AddRequestHandle(o =>
+            {
+                if (func != null)
+                    func(o);
+
+                var key = string.Empty;
+                using (var reader = new StreamReader(new MemoryStream(o)))
+                {
+                    reader.ReadLine();
+                    var httpRequest = reader.ReadToEnd();
+                    foreach (var l in httpRequest.Split('\n'))
+                    {
+                        var arr = l.Split(':');
+                        if (arr[0].Trim().Equals("Sec-WebSocket-Key"))
+                            key = arr[1].Trim();
+                    }
+                }
+
+                ms.AddResponse(Encoding.ASCII.GetBytes(
+                    "HTTP/1.1 101 Switching Protocols\r\n" +
+                            "Upgrade: websocket\r\n" +
+                            "Connection: Upgrade\r\n" +
+                            "Sec-WebSocket-Accept: " + createResponseKey(key) + "\r\n" +
+                            "Sec-WebSocket-Protocol: chat\r\n\r\n"));
+            });
+        }
+        //refer to websocket-sharp websocket.cs
+        private string createResponseKey(string key)
+        {
+            SHA1 sha1 = new SHA1CryptoServiceProvider();
+            var sb = new StringBuilder(key);
+            sb.Append("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            var src = sha1.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
+            return Convert.ToBase64String(src);
         }
     }
 }
