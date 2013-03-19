@@ -37,10 +37,25 @@ namespace TopPushClientTest
 
         [Test]
         [ExpectedException]
-        public void ConnectErrorTest()
+        public void ConnectErrorTest_RemoteDown()
         {
             Client client = new Client("csharp");
-            client.Connect("ws://127.0.0.1:8080/");
+            client.Connect("ws://127.0.0.1:8000/");
+        }
+
+        [Test]
+        [ExpectedException]
+        public void ConnectErrorTest_HandshakeError()
+        {
+            ms.AddRequestHandle(o => { });
+            ms.AddResponse(Encoding.ASCII.GetBytes(
+                "HTTP/1.1 401 Auth Fail\r\n" +
+                "Upgrade: websocket\r\n" +
+                "Connection: Upgrade\r\n" +
+                "Sec-WebSocket-Accept: 123\r\n" +
+                "Sec-WebSocket-Protocol: chat\r\n\r\n"));
+            Client client = new Client("csharp");
+            client.Connect(uri);
         }
 
         //timeout not support in this client impl
@@ -149,10 +164,10 @@ namespace TopPushClientTest
 
                 ms.AddResponse(Encoding.ASCII.GetBytes(
                     "HTTP/1.1 101 Switching Protocols\r\n" +
-                            "Upgrade: websocket\r\n" +
-                            "Connection: Upgrade\r\n" +
-                            "Sec-WebSocket-Accept: " + createResponseKey(key) + "\r\n" +
-                            "Sec-WebSocket-Protocol: chat\r\n\r\n"));
+                    "Upgrade: websocket\r\n" +
+                    "Connection: Upgrade\r\n" +
+                    "Sec-WebSocket-Accept: " + createResponseKey(key) + "\r\n" +
+                    "Sec-WebSocket-Protocol: chat\r\n\r\n"));
             });
         }
         //refer to websocket-sharp websocket.cs
